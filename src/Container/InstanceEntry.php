@@ -3,7 +3,7 @@
 namespace Kirameki\Container;
 
 /**
- * @template TEntry
+ * @template TEntry of object
  * @implements Entry<TEntry>
  */
 class InstanceEntry implements Entry

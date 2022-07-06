@@ -3,6 +3,8 @@
 namespace Kirameki\Container;
 
 use Closure;
+use ReflectionClass;
+use ReflectionParameter;
 use function array_key_exists;
 
 class Container
@@ -11,6 +13,11 @@ class Container
      * @var array<class-string, Entry<mixed>>
      */
     protected array $entries = [];
+
+    /**
+     * @var array<class-string, array<int, ReflectionClass<object>>
+     */
+    protected array $reflected = [];
 
     /**
      * @template TEntry
@@ -86,5 +93,30 @@ class Container
     public function entries(): array
     {
         return $this->entries;
+    }
+
+    /**
+     * @template TEntry
+     * @param class-string<TEntry> $id
+     * @return TEntry
+     */
+    public function resolve(string $id, mixed ...$args): mixed
+    {
+        $reflection = $this->reflected[$id] ??= new ReflectionClass($id);
+
+        $params = $reflection->getConstructor()?->getParameters() ?? [];
+
+        if (count($args) === 0) {
+            foreach ($params as $param) {
+                $paramClass = $param->getType()->getName();
+                if (class_exists($paramClass)) {
+                    $args[$param->getName()] = $this->has($paramClass)
+                        ? $this->get($paramClass)
+                        : $this->resolve($paramClass);
+                }
+            }
+        }
+
+        return $reflection->newInstance(...$args);
     }
 }
