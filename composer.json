@@ -1,0 +1,40 @@
+{
+  "name": "kirameki/container",
+  "description": "DI Container for PHP",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": ">= 8.1",
+    "kirameki/utils": "dev-main",
+    "symfony/var-dumper": "^6"
+  },
+  "require-dev": {
+    "phpstan/extension-installer": "^1.1",
+    "phpstan/phpstan": "^1.7",
+    "phpstan/phpstan-webmozart-assert": "^1.1",
+    "phpunit/phpunit": "~9.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Kirameki\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\Kirameki\\": "tests/src/"
+    }
+  },
+  "config": {
+    "discard-changes": true,
+    "preferred-install": "dist",
+    "sort-packages": true,
+    "allow-plugins": {
+      "phpstan/extension-installer": true
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "scripts": {
+    "analyze": "vendor/bin/phpstan analyse --memory-limit 1G"
+  }
+}
