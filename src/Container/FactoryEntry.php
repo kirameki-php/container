@@ -9,7 +9,7 @@ use Webmozart\Assert\Assert;
  * @template TEntry of object
  * @implements Entry<TEntry>
  */
-class ClosureEntry implements Entry
+class FactoryEntry implements Entry
 {
     /**
      * @var class-string<TEntry>

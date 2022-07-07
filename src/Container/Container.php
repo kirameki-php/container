@@ -4,7 +4,8 @@ namespace Kirameki\Container;
 
 use Closure;
 use ReflectionClass;
-use ReflectionParameter;
+use ReflectionNamedType;
+use ReflectionType;
 use function array_key_exists;
 
 class Container
@@ -15,9 +16,9 @@ class Container
     protected array $entries = [];
 
     /**
-     * @var array<class-string, array<int, ReflectionClass<object>>
+     * @var array<class-string, ReflectionClass<object>>
      */
-    protected array $reflected = [];
+    protected array $reflectionCache = [];
 
     /**
      * @template TEntry
@@ -42,13 +43,24 @@ class Container
      * @template TEntry
      * @param class-string<TEntry> $id
      * @param TEntry $entry
+     * @return void
+     */
+    public function instance(string $id, mixed $entry): void
+    {
+        $this->set($id, $entry);
+    }
+
+    /**
+     * @template TEntry
+     * @param class-string<TEntry> $id
+     * @param TEntry $entry
      * @param bool $cached
      * @return void
      */
-    public function set(string $id, mixed $entry, bool $cached = false): void
+    protected function set(string $id, mixed $entry, bool $cached = false): void
     {
         $this->entries[$id] = $entry instanceof Closure
-            ? new ClosureEntry($id, $entry, [$this], $cached)
+            ? new FactoryEntry($id, $entry, [$this], $cached)
             : new InstanceEntry($id, $entry);
     }
 
@@ -100,23 +112,65 @@ class Container
      * @param class-string<TEntry> $id
      * @return TEntry
      */
-    public function resolve(string $id, mixed ...$args): mixed
+    public function resolve(string $id): mixed
     {
-        $reflection = $this->reflected[$id] ??= new ReflectionClass($id);
-
-        $params = $reflection->getConstructor()?->getParameters() ?? [];
-
-        if (count($args) === 0) {
-            foreach ($params as $param) {
-                $paramClass = $param->getType()->getName();
-                if (class_exists($paramClass)) {
-                    $args[$param->getName()] = $this->has($paramClass)
-                        ? $this->get($paramClass)
-                        : $this->resolve($paramClass);
-                }
-            }
+        if ($this->has($id)) {
+            return $this->get($id);
         }
 
-        return $reflection->newInstance(...$args);
+        $class = $this->reflectionCache[$id] ??= new ReflectionClass($id);
+
+        $args = $this->resolveArguments($class);
+
+        /** @var TEntry */
+        return $class->newInstance(...$args);
+    }
+
+    /**
+     * @param ReflectionClass<object> $class
+     * @return array<string, mixed>
+     */
+    protected function resolveArguments(ReflectionClass $class): array
+    {
+        $args = [];
+        $params = $class->getConstructor()?->getParameters() ?? [];
+        foreach ($params as $param) {
+            $type = $param->getType();
+            if ($type !== null && $paramClass = $this->revealArgumentClass($class, $type)) {
+                $args[$param->getName()] = $this->has($paramClass)
+                    ? $this->get($paramClass)
+                    : $this->resolve($paramClass);
+            }
+        }
+        return $args;
+    }
+
+    /**
+     * @param ReflectionClass<object> $class
+     * @param ReflectionType $type
+     * @return class-string|null
+     */
+    private function revealArgumentClass(ReflectionClass $class, ReflectionType $type): ?string
+    {
+        if (!($type instanceof ReflectionNamedType)) {
+            return null;
+        }
+
+        if ($type->isBuiltin()) {
+            return null;
+        }
+
+        $className = $type->getName();
+
+        if ($className === 'self') {
+            return $class->getName();
+        }
+
+        if ($className === 'parent') {
+            return ($class->getParentClass() ?: null)?->getName();
+        }
+
+        /** @var class-string */
+        return $className;
     }
 }
