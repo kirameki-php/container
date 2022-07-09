@@ -5,6 +5,7 @@ namespace Kirameki\Container;
 use Closure;
 use ReflectionClass;
 use ReflectionNamedType;
+use ReflectionParameter;
 use ReflectionType;
 use function array_key_exists;
 
@@ -21,62 +22,7 @@ class Container
     protected array $reflectionCache = [];
 
     /**
-     * @template TEntry
-     * @param class-string<TEntry> $id
-     * @return TEntry
-     */
-    public function get(string $id): mixed
-    {
-        return $this->entries[$id]->getInstance();
-    }
-
-    /**
-     * @param string $id
-     * @return bool
-     */
-    public function has(string $id): bool
-    {
-        return array_key_exists($id, $this->entries);
-    }
-
-    /**
-     * @template TEntry
-     * @param class-string<TEntry> $id
-     * @param TEntry $entry
-     * @return void
-     */
-    public function instance(string $id, mixed $entry): void
-    {
-        $this->set($id, $entry);
-    }
-
-    /**
-     * @template TEntry
-     * @param class-string<TEntry> $id
-     * @param TEntry $entry
-     * @param bool $cached
-     * @return void
-     */
-    protected function set(string $id, mixed $entry, bool $cached = false): void
-    {
-        $this->entries[$id] = $entry instanceof Closure
-            ? new FactoryEntry($id, $entry, [$this], $cached)
-            : new InstanceEntry($id, $entry);
-    }
-
-    /**
-     * @template TEntry
-     * @param class-string<TEntry> $id
-     * @param TEntry|Closure(static): TEntry $entry
-     * @return void
-     */
-    public function singleton(string $id, mixed $entry): void
-    {
-        $this->set($id, $entry, true);
-    }
-
-    /**
-     * @template TEntry
+     * @template TEntry of object
      * @param class-string<TEntry> $id
      * @return bool
      */
@@ -90,7 +36,7 @@ class Container
     }
 
     /**
-     * @template TEntry
+     * @template TEntry of object
      * @param class-string<TEntry> $id
      * @return Entry<TEntry>
      */
@@ -100,46 +46,94 @@ class Container
     }
 
     /**
-     * @return array<class-string, Entry<mixed>>
-     */
-    public function entries(): array
-    {
-        return $this->entries;
-    }
-
-    /**
-     * @template TEntry
+     * @template TEntry of object
      * @param class-string<TEntry> $id
      * @return TEntry
      */
-    public function resolve(string $id): mixed
+    public function get(string $id): mixed
     {
-        if ($this->has($id)) {
-            return $this->get($id);
+        return $this->entries[$id]->getInstance();
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return bool
+     */
+    public function has(string $id): bool
+    {
+        return array_key_exists($id, $this->entries);
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param TEntry $entry
+     * @return void
+     */
+    public function instance(string $id, mixed $entry): void
+    {
+        $this->set($id, new InstanceEntry($id, $entry));
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param mixed ...$args
+     * @return TEntry
+     */
+    public function make(string $id, mixed ...$args): object
+    {
+        $noArgs = count($args) === 0;
+
+        if ($noArgs && $this->has($id)) {
+            $this->get($id);
         }
 
         $class = $this->reflectionCache[$id] ??= new ReflectionClass($id);
 
-        $args = $this->resolveArguments($class);
+        if ($noArgs) {
+            $args = $this->resolveArguments($class);
+        }
 
         /** @var TEntry */
         return $class->newInstance(...$args);
     }
 
     /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Entry<TEntry> $entry
+     * @return void
+     */
+    protected function set(string $id, Entry $entry): void
+    {
+        $this->entries[$id] = $entry;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Closure(static): TEntry $entry
+     * @return void
+     */
+    public function singleton(string $id, mixed $entry): void
+    {
+        $this->set($id, new FactoryEntry($id, $entry, [$this], true));
+    }
+
+    /**
      * @param ReflectionClass<object> $class
-     * @return array<string, mixed>
+     * @return array<int, mixed>
      */
     protected function resolveArguments(ReflectionClass $class): array
     {
         $args = [];
         $params = $class->getConstructor()?->getParameters() ?? [];
         foreach ($params as $param) {
-            $type = $param->getType();
-            if ($type !== null && $paramClass = $this->revealArgumentClass($class, $type)) {
-                $args[$param->getName()] = $this->has($paramClass)
-                    ? $this->get($paramClass)
-                    : $this->resolve($paramClass);
+            $arg = $this->resolveArgument($class, $param);
+            if ($arg !== null) {
+                $args[] = $arg;
             }
         }
         return $args;
@@ -147,10 +141,31 @@ class Container
 
     /**
      * @param ReflectionClass<object> $class
+     * @param ReflectionParameter $param
+     * @return mixed
+     */
+    protected function resolveArgument(ReflectionClass $class, ReflectionParameter $param): mixed
+    {
+        $type = $param->getType();
+
+        if ($type === null) {
+            return null;
+        }
+
+        if ($paramClass = $this->revealTrueClass($class, $type)) {
+            return $this->has($paramClass)
+                ? $this->get($paramClass)
+                : $this->make($paramClass);
+        }
+        return null;
+    }
+
+    /**
+     * @param ReflectionClass<object> $class
      * @param ReflectionType $type
      * @return class-string|null
      */
-    private function revealArgumentClass(ReflectionClass $class, ReflectionType $type): ?string
+    private function revealTrueClass(ReflectionClass $class, ReflectionType $type): ?string
     {
         if (!($type instanceof ReflectionNamedType)) {
             return null;
