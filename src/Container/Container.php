@@ -14,26 +14,7 @@ class Container
     /**
      * @var array<class-string, Entry<mixed>>
      */
-    protected array $entries = [];
-
-    /**
-     * @var array<class-string, ReflectionClass<object>>
-     */
-    protected array $reflectionCache = [];
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return bool
-     */
-    public function delete(string $id): bool
-    {
-        if ($this->has($id)) {
-            unset($this->entries[$id]);
-            return true;
-        }
-        return false;
-    }
+    protected array $registered = [];
 
     /**
      * @template TEntry of object
@@ -42,7 +23,7 @@ class Container
      */
     public function entry(string $id): Entry
     {
-        return $this->entries[$id];
+        return $this->registered[$id];
     }
 
     /**
@@ -52,7 +33,7 @@ class Container
      */
     public function get(string $id): mixed
     {
-        return $this->entries[$id]->getInstance();
+        return $this->registered[$id]->getInstance();
     }
 
     /**
@@ -62,18 +43,78 @@ class Container
      */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->entries);
+        return array_key_exists($id, $this->registered);
     }
 
     /**
      * @template TEntry of object
      * @param class-string<TEntry> $id
-     * @param TEntry $entry
-     * @return void
+     * @param Closure(Container): TEntry $resolver
+     * @return $this
      */
-    public function instance(string $id, mixed $entry): void
+    public function bind(string $id, Closure $resolver): static
     {
-        $this->set($id, new InstanceEntry($id, $entry));
+        return $this->setEntry($id, new Entry($this, $id, $resolver, false));
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Closure(Container): TEntry $resolver
+     * @return $this
+     */
+    public function singleton(string $id, Closure $resolver): static
+    {
+        return $this->setEntry($id, new Entry($this, $id, $resolver, true));
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return bool
+     */
+    public function delete(string $id): bool
+    {
+        if ($this->has($id)) {
+            unset($this->registered[$id]);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Entry<TEntry> $entry
+     * @return $this
+     */
+    protected function setEntry(string $id, Entry $entry): static
+    {
+        $this->registered[$id] = $entry;
+        return $this;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return $this
+     */
+    protected function rebind(string $id): static
+    {
+        $this->entry($id)->rebind();
+        return $this;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Closure(TEntry, Container): TEntry $resolver
+     * @return $this
+     */
+    public function extend(string $id, Closure $resolver): static
+    {
+        $this->entry($id)->extend($resolver);
+        return $this;
     }
 
     /**
@@ -82,7 +123,7 @@ class Container
      * @param mixed ...$args
      * @return TEntry
      */
-    public function make(string $id, mixed ...$args): object
+    public function resolve(string $id, mixed ...$args): object
     {
         $noArgs = count($args) === 0;
 
@@ -90,7 +131,7 @@ class Container
             $this->get($id);
         }
 
-        $class = $this->reflectionCache[$id] ??= new ReflectionClass($id);
+        $class = new ReflectionClass($id);
 
         if ($noArgs) {
             $args = $this->resolveArguments($class);
@@ -98,28 +139,6 @@ class Container
 
         /** @var TEntry */
         return $class->newInstance(...$args);
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Entry<TEntry> $entry
-     * @return void
-     */
-    protected function set(string $id, Entry $entry): void
-    {
-        $this->entries[$id] = $entry;
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(static): TEntry $entry
-     * @return void
-     */
-    public function singleton(string $id, mixed $entry): void
-    {
-        $this->set($id, new FactoryEntry($id, $entry, [$this], true));
     }
 
     /**
@@ -155,7 +174,7 @@ class Container
         if ($paramClass = $this->revealTrueClass($class, $type)) {
             return $this->has($paramClass)
                 ? $this->get($paramClass)
-                : $this->make($paramClass);
+                : $this->resolve($paramClass);
         }
         return null;
     }
