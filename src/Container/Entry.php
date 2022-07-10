@@ -3,7 +3,6 @@
 namespace Kirameki\Container;
 
 use Closure;
-use RuntimeException;
 use Webmozart\Assert\Assert;
 
 /**
@@ -23,13 +22,13 @@ class Entry
 
     /**
      * @param Container $container
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
      * @param bool $cacheable
      */
     public function __construct(
         protected Container $container,
-        protected string $id,
+        protected string $class,
         protected Closure $resolver,
         protected bool $cacheable,
     )
@@ -39,9 +38,9 @@ class Entry
     /**
      * @return class-string<TEntry>
      */
-    public function getId(): string
+    public function getClass(): string
     {
-        return $this->id;
+        return $this->class;
     }
 
     /**
@@ -72,7 +71,7 @@ class Entry
 
         foreach ($this->extenders as $extender) {
             $instance = $extender($instance, $this->container);
-            Assert::isInstanceOf($instance, $this->id);
+            Assert::isInstanceOf($instance, $this->class);
         }
 
         return $instance;
@@ -87,7 +86,7 @@ class Entry
         $this->extenders[] = $resolver;
 
         if ($this->isCached()) {
-            $this->rebind();
+            $this->reset();
         }
 
         return $this;
@@ -104,7 +103,7 @@ class Entry
     /**
      * @return $this
      */
-    public function rebind(): static
+    public function reset(): static
     {
         $this->cached = null;
         return $this;

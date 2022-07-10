@@ -12,71 +12,98 @@ use function array_key_exists;
 class Container
 {
     /**
-     * @var array<class-string, Entry<mixed>>
+     * @var array<class-string, mixed>
      */
     protected array $registered = [];
 
     /**
+     * @var array<Closure(string): void>
+     */
+    protected array $resolvingCallbacks = [];
+
+    /**
+     * @var array<Closure(string, mixed): void>
+     */
+    protected array $resolvedCallbacks = [];
+
+    /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @return Entry<TEntry>
      */
-    public function entry(string $id): Entry
+    public function entry(string $class): Entry
     {
-        return $this->registered[$id];
+        return $this->registered[$class];
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @return TEntry
      */
-    public function get(string $id): mixed
+    public function resolve(string $class): mixed
     {
-        return $this->registered[$id]->getInstance();
+        $entry = $this->entry($class);
+        $callEvent = !$entry->isCached();
+
+        if($callEvent) {
+            foreach ($this->resolvingCallbacks as $callback) {
+                $callback($class);
+            }
+        }
+
+        $instance =  $entry->getInstance();
+
+        if ($callEvent) {
+            foreach ($this->resolvedCallbacks as $callback) {
+                $callback($class, $instance);
+            }
+        }
+
+        return $instance;
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @return bool
      */
-    public function has(string $id): bool
+    public function has(string $class): bool
     {
-        return array_key_exists($id, $this->registered);
+        return array_key_exists($class, $this->registered);
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function bind(string $id, Closure $resolver): static
+    public function bind(string $class, Closure $resolver): static
     {
-        return $this->setEntry($id, new Entry($this, $id, $resolver, false));
+        return $this->setEntry($class, new Entry($this, $class, $resolver, false));
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function singleton(string $id, Closure $resolver): static
+    public function singleton(string $class, Closure $resolver): static
     {
-        return $this->setEntry($id, new Entry($this, $id, $resolver, true));
+        return $this->setEntry($class, new Entry($this, $class, $resolver, true));
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @return bool
      */
-    public function delete(string $id): bool
+    public function delete(string $class): bool
     {
-        if ($this->has($id)) {
-            unset($this->registered[$id]);
+        if ($this->has($class)) {
+            unset($this->registered[$class]);
             return true;
         }
         return false;
@@ -84,73 +111,80 @@ class Container
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Entry<TEntry> $entry
      * @return $this
      */
-    protected function setEntry(string $id, Entry $entry): static
+    protected function setEntry(string $class, Entry $entry): static
     {
-        $this->registered[$id] = $entry;
+        $this->registered[$class] = $entry;
         return $this;
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return $this
+     * @param Closure(mixed): void $callback
+     * @return void
      */
-    protected function rebind(string $id): static
+    public function resolving(Closure $callback): void
     {
-        $this->entry($id)->rebind();
-        return $this;
+        $this->resolvingCallbacks[] = $callback;
+    }
+
+    /**
+     * @param Closure(mixed): void $callback
+     * @return void
+     */
+    public function resolved(Closure $callback): void
+    {
+        $this->resolvedCallbacks[] = $callback;
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(TEntry, Container): TEntry $resolver
      * @return $this
      */
-    public function extend(string $id, Closure $resolver): static
+    public function extend(string $class, Closure $resolver): static
     {
-        $this->entry($id)->extend($resolver);
+        $this->entry($class)->extend($resolver);
         return $this;
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param mixed ...$args
      * @return TEntry
      */
-    public function resolve(string $id, mixed ...$args): object
+    public function inject(string $class, mixed ...$args): object
     {
         $noArgs = count($args) === 0;
 
-        if ($noArgs && $this->has($id)) {
-            $this->get($id);
+        if ($noArgs && $this->has($class)) {
+            $this->resolve($class);
         }
 
-        $class = new ReflectionClass($id);
+        $classReflection = new ReflectionClass($class);
 
         if ($noArgs) {
-            $args = $this->resolveArguments($class);
+            $args = $this->getInjectingArguments($classReflection);
         }
 
         /** @var TEntry */
-        return $class->newInstance(...$args);
+        return $classReflection->newInstance(...$args);
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @param ReflectionClass<object> $classReflection
      * @return array<int, mixed>
      */
-    protected function resolveArguments(ReflectionClass $class): array
+    protected function getInjectingArguments(ReflectionClass $classReflection): array
     {
         $args = [];
-        $params = $class->getConstructor()?->getParameters() ?? [];
+        $params = $classReflection->getConstructor()?->getParameters() ?? [];
         foreach ($params as $param) {
-            $arg = $this->resolveArgument($class, $param);
+            $arg = $this->getInjectingArgument($classReflection, $param);
             if ($arg !== null) {
                 $args[] = $arg;
             }
@@ -159,11 +193,11 @@ class Container
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @param ReflectionClass<object> $classReflection
      * @param ReflectionParameter $param
      * @return mixed
      */
-    protected function resolveArgument(ReflectionClass $class, ReflectionParameter $param): mixed
+    protected function getInjectingArgument(ReflectionClass $classReflection, ReflectionParameter $param): mixed
     {
         $type = $param->getType();
 
@@ -171,20 +205,20 @@ class Container
             return null;
         }
 
-        if ($paramClass = $this->revealTrueClass($class, $type)) {
+        if ($paramClass = $this->revealTrueClass($classReflection, $type)) {
             return $this->has($paramClass)
-                ? $this->get($paramClass)
-                : $this->resolve($paramClass);
+                ? $this->resolve($paramClass)
+                : $this->inject($paramClass);
         }
         return null;
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @param ReflectionClass<object> $classReflection
      * @param ReflectionType $type
      * @return class-string|null
      */
-    private function revealTrueClass(ReflectionClass $class, ReflectionType $type): ?string
+    private function revealTrueClass(ReflectionClass $classReflection, ReflectionType $type): ?string
     {
         if (!($type instanceof ReflectionNamedType)) {
             return null;
@@ -197,11 +231,11 @@ class Container
         $className = $type->getName();
 
         if ($className === 'self') {
-            return $class->getName();
+            return $classReflection->getName();
         }
 
         if ($className === 'parent') {
-            return ($class->getParentClass() ?: null)?->getName();
+            return ($classReflection->getParentClass() ?: null)?->getName();
         }
 
         /** @var class-string */

@@ -12,7 +12,7 @@ class TestCaseTest extends BaseTestCase
     {
         $container = new Container();
         $container->instance(\DateTime::class, new \DateTime('1970'));
-        $data = $container->resolve(AllTypes::class);
+        $data = $container->inject(AllTypes::class);
         dump($data);
     }
 }
