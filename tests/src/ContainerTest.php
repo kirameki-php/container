@@ -5,9 +5,11 @@ namespace Tests\Kirameki;
 use DateTime;
 use LogicException;
 use Tests\Kirameki\Sample\BasicExtended;
+use Tests\Kirameki\Sample\Builtin;
 use Tests\Kirameki\Sample\Circular1;
 use Tests\Kirameki\Sample\Circular2;
 use Tests\Kirameki\Sample\Basic;
+use Tests\Kirameki\Sample\Intersect;
 use Tests\Kirameki\Sample\NoType;
 use Tests\Kirameki\Sample\NoTypeDefault;
 use Tests\Kirameki\Sample\Nullable;
@@ -206,6 +208,20 @@ class ContainerTest extends TestCase
     {
         $noType = $this->container->inject(NoTypeDefault::class);
         self::assertSame(1, $noType->a);
+    }
+
+    public function test_inject_with_intersect_type(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Tests\Kirameki\Sample\Intersect Invalid type on argument: Tests\Kirameki\Sample\Basic&Tests\Kirameki\Sample\BasicExtended $a. Union/intersect/built-in types are not allowed.');
+        $this->container->inject(Intersect::class);
+    }
+
+    public function test_inject_with_builtin_type(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Tests\Kirameki\Sample\Builtin Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
+        $this->container->inject(Builtin::class);
     }
 
     public function test_inject_with_union_type(): void
