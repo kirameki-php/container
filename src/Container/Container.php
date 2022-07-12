@@ -5,17 +5,11 @@ namespace Kirameki\Container;
 use Closure;
 use LogicException;
 use ReflectionClass;
-use ReflectionIntersectionType;
 use ReflectionNamedType;
 use ReflectionParameter;
-use ReflectionType;
-use ReflectionUnionType;
 use function array_key_exists;
 use function array_keys;
-use function assert;
-use function dump;
 use function implode;
-use function sprintf;
 use function strtr;
 
 class Container
