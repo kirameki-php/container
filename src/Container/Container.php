@@ -10,7 +10,6 @@ use ReflectionParameter;
 use ReflectionType;
 use function array_key_exists;
 use function array_keys;
-use function dump;
 use function implode;
 
 class Container
@@ -26,12 +25,12 @@ class Container
     protected array $processing = [];
 
     /**
-     * @var array<Closure(string): void>
+     * @var array<Closure(class-string): void>
      */
     protected array $resolvingCallbacks = [];
 
     /**
-     * @var array<Closure(string, mixed): void>
+     * @var array<Closure(class-string, mixed): void>
      */
     protected array $resolvedCallbacks = [];
 
@@ -141,7 +140,7 @@ class Container
     }
 
     /**
-     * @param Closure(mixed): void $callback
+     * @param Closure(class-string): void $callback
      * @return void
      */
     public function resolving(Closure $callback): void
@@ -150,7 +149,7 @@ class Container
     }
 
     /**
-     * @param Closure(mixed): void $callback
+     * @param Closure(class-string, mixed): void $callback
      * @return void
      */
     public function resolved(Closure $callback): void
