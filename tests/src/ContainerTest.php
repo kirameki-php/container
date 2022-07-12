@@ -8,6 +8,12 @@ use Tests\Kirameki\Sample\BasicExtended;
 use Tests\Kirameki\Sample\Circular1;
 use Tests\Kirameki\Sample\Circular2;
 use Tests\Kirameki\Sample\Basic;
+use Tests\Kirameki\Sample\NoType;
+use Tests\Kirameki\Sample\NoTypeDefault;
+use Tests\Kirameki\Sample\Nullable;
+use Tests\Kirameki\Sample\ParentType;
+use Tests\Kirameki\Sample\SelfType;
+use Tests\Kirameki\Sample\Union;
 
 class ContainerTest extends TestCase
 {
@@ -142,25 +148,23 @@ class ContainerTest extends TestCase
         $this->assertTotalResolvedCount(1);
     }
 
-    public function test_inject_with_bound_param(): void
+    public function test_inject_with_parameters(): void
     {
         $now = new DateTime();
 
-        $this->container->bind(DateTime::class, static fn() => $now);
-        $basic = $this->container->inject(Basic::class);
-
+        $basic = $this->container->inject(Basic::class, $now, 2);
         self::assertSame($now, $basic->d);
-        self::assertSame(1, $basic->i);
-        $this->assertTotalResolvingCount(1);
-        $this->assertTotalResolvedCount(1);
+        self::assertSame(2, $basic->i);
+        $this->assertTotalResolvingCount(0);
+        $this->assertTotalResolvedCount(0);
     }
 
-    public function test_inject_with_named_params(): void
+    public function test_inject_with_named_parameters(): void
     {
         $now = new DateTime();
 
         $basic = $this->container->inject(Basic::class, d: $now, i: 2);
-        self::assertSame($now->getTimestamp(), $basic->d->getTimestamp());
+        self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
@@ -176,6 +180,60 @@ class ContainerTest extends TestCase
         self::assertSame(1, $basic->i);
         $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+    }
+
+    public function test_inject_with_bound_parameter(): void
+    {
+        $now = new DateTime();
+
+        $this->container->bind(DateTime::class, static fn() => $now);
+        $basic = $this->container->inject(Basic::class);
+
+        self::assertSame($now, $basic->d);
+        self::assertSame(1, $basic->i);
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
+    }
+
+    public function test_inject_with_no_types(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Argument $a for ' . NoType::class . ' must be a class or have a default value.');
+        $this->container->inject(NoType::class);
+    }
+
+    public function test_inject_with_no_types_but_has_default(): void
+    {
+        $noType = $this->container->inject(NoTypeDefault::class);
+        self::assertSame(1, $noType->a);
+    }
+
+    public function test_inject_with_union_type(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Tests\Kirameki\Sample\Union Invalid type on argument: Tests\Kirameki\Sample\Basic|Tests\Kirameki\Sample\BasicExtended $a. Union/intersect/built-in types are not allowed.');
+        $this->container->inject(Union::class);
+    }
+
+    public function test_inject_with_self_type(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Circular Dependency detected! Tests\Kirameki\Sample\SelfType -> Tests\Kirameki\Sample\SelfType');
+        $this->container->inject(SelfType::class);
+    }
+
+    public function test_inject_with_parent_type(): void
+    {
+        $parentType = $this->container->inject(ParentType::class);
+        self::assertSame(1, $parentType->a);
+    }
+
+    public function test_inject_with_nullable_type(): void
+    {
+        $this->container->bind(DateTime::class, fn () => new DateTime());
+        $nullable = $this->container->inject(Nullable::class);
+        self::assertInstanceOf(DateTime::class, $nullable->a);
+
     }
 
     public function test_inject_with_missing_parameter(): void

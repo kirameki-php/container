@@ -2,16 +2,12 @@
 
 namespace Tests\Kirameki\Sample;
 
-use DateTime;
-use Kirameki\Utils\Type;
-
-class Basic
+class ParentType extends NoTypeDefault
 {
     public function __construct(
-        public DateTime $d,
-        public int $i = 1,
+        parent $self,
     )
     {
-
+        parent::__construct($self->a);
     }
 }

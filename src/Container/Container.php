@@ -5,12 +5,18 @@ namespace Kirameki\Container;
 use Closure;
 use LogicException;
 use ReflectionClass;
+use ReflectionIntersectionType;
 use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
+use ReflectionUnionType;
 use function array_key_exists;
 use function array_keys;
+use function assert;
+use function dump;
 use function implode;
+use function sprintf;
+use function strtr;
 
 class Container
 {
@@ -232,33 +238,43 @@ class Container
         $type = $param->getType();
 
         if ($type === null) {
-            return null;
+            if ($param->isDefaultValueAvailable()) {
+                return null;
+            }
+            throw new LogicException(strtr('Argument $%name for %class must be a class or have a default value.', [
+                '%name' => $param->name,
+                '%class' => $classReflection->name,
+            ]));
         }
 
-        if ($paramClass = $this->revealTrueClass($classReflection, $type)) {
-            return $this->contains($paramClass)
-                ? $this->resolve($paramClass)
-                : $this->inject($paramClass);
+        if (!($type instanceof ReflectionNamedType) || $type->isBuiltin()) {
+            if ($param->isDefaultValueAvailable()) {
+                return null;
+            }
+
+            $errorMessage = '%class Invalid type on argument: %type $%name. ' .
+                            'Union/intersect/built-in types are not allowed.';
+
+            throw new LogicException(strtr($errorMessage, [
+                '%type' => (string) $type,
+                '%name' => $param->name,
+                '%class' => $classReflection->name,
+            ]));
         }
 
-        return null;
+        $paramClass = $this->revealTrueClass($classReflection, $type);
+        return $this->contains($paramClass)
+            ? $this->resolve($paramClass)
+            : $this->inject($paramClass);
     }
 
     /**
      * @param ReflectionClass<object> $classReflection
-     * @param ReflectionType $type
-     * @return class-string|null
+     * @param ReflectionNamedType $type
+     * @return class-string
      */
-    private function revealTrueClass(ReflectionClass $classReflection, ReflectionType $type): ?string
+    private function revealTrueClass(ReflectionClass $classReflection, ReflectionNamedType $type): string
     {
-        if (!($type instanceof ReflectionNamedType)) {
-            return null;
-        }
-
-        if ($type->isBuiltin()) {
-            return null;
-        }
-
         $className = $type->getName();
 
         if ($className === 'self') {
@@ -266,7 +282,9 @@ class Container
         }
 
         if ($className === 'parent') {
-            return ($classReflection->getParentClass() ?: null)?->getName();
+            if ($parentReflection = $classReflection->getParentClass()) {
+                return $parentReflection->getName();
+            }
         }
 
         /** @var class-string */
