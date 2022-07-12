@@ -247,7 +247,10 @@ class Container
             ]));
         }
 
-        if (!($type instanceof ReflectionNamedType) || $type->isBuiltin()) {
+        if (
+            !($type instanceof ReflectionNamedType) ||
+            $type->isBuiltin()
+        ) {
             if ($param->isDefaultValueAvailable()) {
                 return null;
             }
