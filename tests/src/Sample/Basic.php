@@ -4,9 +4,8 @@ namespace Tests\Kirameki\Sample;
 
 use DateTime;
 use Kirameki\Utils\Type;
-use stdClass;
 
-class AllTypes extends Type
+class Basic extends Type
 {
     public function __construct(
         public DateTime $d,

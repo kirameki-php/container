@@ -3,11 +3,15 @@
 namespace Kirameki\Container;
 
 use Closure;
+use LogicException;
 use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
 use function array_key_exists;
+use function array_keys;
+use function dump;
+use function implode;
 
 class Container
 {
@@ -15,6 +19,11 @@ class Container
      * @var array<class-string, mixed>
      */
     protected array $registered = [];
+
+    /**
+     * @var array<class-string, null>
+     */
+    protected array $processing = [];
 
     /**
      * @var array<Closure(string): void>
@@ -29,21 +38,11 @@ class Container
     /**
      * @template TEntry of object
      * @param class-string<TEntry> $class
-     * @return Entry<TEntry>
-     */
-    public function entry(string $class): Entry
-    {
-        return $this->registered[$class];
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
      * @return TEntry
      */
     public function resolve(string $class): mixed
     {
-        $entry = $this->entry($class);
+        $entry = $this->getEntry($class);
         $callEvent = !$entry->isCached();
 
         if($callEvent) {
@@ -68,9 +67,19 @@ class Container
      * @param class-string<TEntry> $class
      * @return bool
      */
-    public function has(string $class): bool
+    public function contains(string $class): bool
     {
         return array_key_exists($class, $this->registered);
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @return bool
+     */
+    public function notContains(string $class): bool
+    {
+        return !$this->contains($class);
     }
 
     /**
@@ -102,11 +111,21 @@ class Container
      */
     public function delete(string $class): bool
     {
-        if ($this->has($class)) {
+        if ($this->contains($class)) {
             unset($this->registered[$class]);
             return true;
         }
         return false;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @return Entry<TEntry>
+     */
+    protected function getEntry(string $class): Entry
+    {
+        return $this->registered[$class];
     }
 
     /**
@@ -147,7 +166,10 @@ class Container
      */
     public function extend(string $class, Closure $resolver): static
     {
-        $this->entry($class)->extend($resolver);
+        if ($this->notContains($class)) {
+            throw new LogicException($class . ' cannot be extended since it is not defined.');
+        }
+        $this->getEntry($class)->extend($resolver);
         return $this;
     }
 
@@ -161,15 +183,24 @@ class Container
     {
         $noArgs = count($args) === 0;
 
-        if ($noArgs && $this->has($class)) {
-            $this->resolve($class);
+        if ($noArgs && $this->contains($class)) {
+            return $this->resolve($class);
         }
 
         $classReflection = new ReflectionClass($class);
 
+        // Check for circular references
+        if (array_key_exists($class, $this->processing)) {
+            $path = implode(' -> ', [...array_keys($this->processing), $class]);
+            throw new LogicException('Circular Dependency detected! ' . $path);
+        }
+        $this->processing[$class] = null;
+
         if ($noArgs) {
             $args = $this->getInjectingArguments($classReflection);
         }
+
+        unset($this->processing[$class]);
 
         /** @var TEntry */
         return $classReflection->newInstance(...$args);
@@ -206,10 +237,11 @@ class Container
         }
 
         if ($paramClass = $this->revealTrueClass($classReflection, $type)) {
-            return $this->has($paramClass)
+            return $this->contains($paramClass)
                 ? $this->resolve($paramClass)
                 : $this->inject($paramClass);
         }
+
         return null;
     }
 
