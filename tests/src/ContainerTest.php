@@ -20,6 +20,24 @@ use Tests\Kirameki\Sample\Variadic;
 
 class ContainerTest extends TestCase
 {
+    public function test_resolve(): void
+    {
+        $now = new DateTime();
+
+        $this->container->bind(DateTime::class, static fn() => $now);
+
+        $resolved = $this->container->resolve(DateTime::class);
+
+        self::assertSame($now, $resolved);
+    }
+
+    public function test_resolve_not_registered(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(DateTime::class . ' is not registered.');
+        $this->container->resolve(DateTime::class);
+    }
+
     public function test_bind(): void
     {
         $this->container->bind(DateTime::class, static fn() => new DateTime());

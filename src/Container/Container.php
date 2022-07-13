@@ -16,14 +16,18 @@ use function strtr;
 class Container
 {
     /**
+     * Registered entries
+     *
      * @var array<class-string, mixed>
      */
     protected array $registered = [];
 
     /**
+     * Only used when calling inject to check for circular dependencies.
+     *
      * @var array<class-string, null>
      */
-    protected array $processing = [];
+    protected array $processingDependencies = [];
 
     /**
      * @var array<Closure(class-string): void>
@@ -36,6 +40,11 @@ class Container
     protected array $resolvedCallbacks = [];
 
     /**
+     * Resolve given class.
+     *
+     * Resolving and Resolved callbacks are invoked on resolution.
+     * For singleton entries, callbacks are only invoked once.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @return TEntry
@@ -43,9 +52,9 @@ class Container
     public function resolve(string $class): mixed
     {
         $entry = $this->getEntry($class);
-        $callEvent = !$entry->isCached();
+        $invokeCallbacks = !$entry->isCached();
 
-        if($callEvent) {
+        if($invokeCallbacks) {
             foreach ($this->resolvingCallbacks as $callback) {
                 $callback($class);
             }
@@ -53,7 +62,7 @@ class Container
 
         $instance =  $entry->getInstance();
 
-        if ($callEvent) {
+        if ($invokeCallbacks) {
             foreach ($this->resolvedCallbacks as $callback) {
                 $callback($class, $instance);
             }
@@ -63,6 +72,9 @@ class Container
     }
 
     /**
+     * Check to see if a given class is registered.
+     * Returns **true** if class exists, **false** otherwise.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @return bool
@@ -73,6 +85,9 @@ class Container
     }
 
     /**
+     * Check to see if a given class is missing.
+     * Returns **false** if class exists, **true** otherwise.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @return bool
@@ -125,6 +140,9 @@ class Container
      */
     protected function getEntry(string $class): Entry
     {
+        if ($this->notContains($class)) {
+            throw new LogicException($class . ' is not registered.');
+        }
         return $this->registered[$class];
     }
 
@@ -190,17 +208,17 @@ class Container
         $classReflection = new ReflectionClass($class);
 
         // Check for circular references
-        if (array_key_exists($class, $this->processing)) {
-            $path = implode(' -> ', [...array_keys($this->processing), $class]);
+        if (array_key_exists($class, $this->processingDependencies)) {
+            $path = implode(' -> ', [...array_keys($this->processingDependencies), $class]);
             throw new LogicException('Circular Dependency detected! ' . $path);
         }
-        $this->processing[$class] = null;
+        $this->processingDependencies[$class] = null;
 
         if ($noArgs) {
             $args = $this->getInjectingArguments($classReflection);
         }
 
-        unset($this->processing[$class]);
+        unset($this->processingDependencies[$class]);
 
         /** @var TEntry */
         return $classReflection->newInstance(...$args);
