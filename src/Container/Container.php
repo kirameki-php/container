@@ -10,6 +10,7 @@ use ReflectionParameter;
 use function array_key_exists;
 use function array_keys;
 use function implode;
+use function is_a;
 use function strtr;
 
 class Container
@@ -246,7 +247,7 @@ class Container
         }
 
         if (
-            !($type instanceof ReflectionNamedType) ||
+            !is_a($type, ReflectionNamedType::class) ||
             $type->isBuiltin()
         ) {
             if ($param->isDefaultValueAvailable()) {

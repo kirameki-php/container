@@ -36,14 +36,6 @@ class Entry
     }
 
     /**
-     * @return class-string<TEntry>
-     */
-    public function getClass(): string
-    {
-        return $this->class;
-    }
-
-    /**
      * @return TEntry
      */
     public function getInstance(): mixed
