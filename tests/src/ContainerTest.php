@@ -16,6 +16,7 @@ use Tests\Kirameki\Sample\Nullable;
 use Tests\Kirameki\Sample\ParentType;
 use Tests\Kirameki\Sample\SelfType;
 use Tests\Kirameki\Sample\Union;
+use Tests\Kirameki\Sample\Variadic;
 
 class ContainerTest extends TestCase
 {
@@ -207,7 +208,32 @@ class ContainerTest extends TestCase
     public function test_inject_with_no_types_but_has_default(): void
     {
         $noType = $this->container->inject(NoTypeDefault::class);
+
         self::assertSame(1, $noType->a);
+    }
+
+    public function test_inject_variadic_type(): void
+    {
+        $variadic = $this->container->inject(Variadic::class);
+
+        self::assertEmpty($variadic->list);
+    }
+
+    public function test_inject_variadic_with_bindings(): void
+    {
+        $this->container->singleton(DateTime::class, fn() => new DateTime());
+        $variadic = $this->container->inject(Variadic::class);
+
+        self::assertEmpty($variadic->list);
+    }
+
+    public function test_inject_variadic_with_arguments(): void
+    {
+        $now = new DateTime();
+        $variadic = $this->container->inject(Variadic::class, $now, $now);
+
+        self::assertSame($now, $variadic->list[0]);
+        self::assertSame($now, $variadic->list[1]);
     }
 
     public function test_inject_with_intersect_type(): void

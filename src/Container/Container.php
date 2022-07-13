@@ -229,6 +229,10 @@ class Container
      */
     protected function getInjectingArgument(ReflectionClass $classReflection, ReflectionParameter $param): mixed
     {
+        if ($param->isVariadic()) {
+            return null;
+        }
+
         $type = $param->getType();
 
         if ($type === null) {
