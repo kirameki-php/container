@@ -3,7 +3,9 @@
 namespace Kirameki\Container;
 
 use Closure;
+use LogicException;
 use Webmozart\Assert\Assert;
+use function is_a;
 
 /**
  * @template TEntry of object
@@ -63,7 +65,9 @@ class Entry
 
         foreach ($this->extenders as $extender) {
             $instance = $extender($instance, $this->container);
-            Assert::isInstanceOf($instance, $this->class);
+            if (!is_a($instance, $this->class)) {
+                throw new LogicException('Instance of ' . $this->class . ' expected. ' . $instance::class . ' given.');
+            }
         }
 
         return $instance;

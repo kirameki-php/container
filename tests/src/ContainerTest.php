@@ -50,6 +50,14 @@ class ContainerTest extends TestCase
         $this->assertTotalResolvedCount(2);
     }
 
+    public function test_bind_twice(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot register class: ' . DateTime::class . '. Entry already exists.');
+        $this->container->bind(DateTime::class, static fn() => new DateTime());
+        $this->container->bind(DateTime::class, static fn() => new DateTime());
+    }
+
     public function test_contains(): void
     {
         self::assertFalse($this->container->contains(DateTime::class));
@@ -98,6 +106,14 @@ class ContainerTest extends TestCase
         $this->assertTotalResolvedCount(1);
     }
 
+    public function test_singleton_twice(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot register class: ' . DateTime::class . '. Entry already exists.');
+        $this->container->singleton(DateTime::class, static fn() => new DateTime());
+        $this->container->singleton(DateTime::class, static fn() => new DateTime());
+    }
+
     public function test_extend(): void
     {
         $this->container->bind(Basic::class, fn() => new Basic(new DateTime()));
@@ -131,7 +147,16 @@ class ContainerTest extends TestCase
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('DateTime cannot be extended since it is not defined.');
-        $this->container->extend(DateTime::class, fn () => new DateTime());
+        $this->container->extend(DateTime::class, fn() => new DateTime());
+    }
+
+    public function test_extend_invalid_return_type(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Instance of ' . DateTime::class . ' expected. ' . NoTypeDefault::class . ' given.');
+        $this->container->bind(DateTime::class, fn() => new DateTime());
+        $this->container->extend(DateTime::class, fn() => new NoTypeDefault());
+        $this->container->resolve(DateTime::class);
     }
 
     public function test_resolving(): void

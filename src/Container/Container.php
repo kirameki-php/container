@@ -45,6 +45,8 @@ class Container
      * Resolving and Resolved callbacks are invoked on resolution.
      * For singleton entries, callbacks are only invoked once.
      *
+     * Returns the resolved instance.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @return TEntry
@@ -73,6 +75,7 @@ class Container
 
     /**
      * Check to see if a given class is registered.
+     *
      * Returns **true** if class exists, **false** otherwise.
      *
      * @template TEntry of object
@@ -86,6 +89,7 @@ class Container
 
     /**
      * Check to see if a given class is missing.
+     *
      * Returns **false** if class exists, **true** otherwise.
      *
      * @template TEntry of object
@@ -98,6 +102,10 @@ class Container
     }
 
     /**
+     * Register a given class.
+     *
+     * Returns itself for chaining.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
@@ -109,6 +117,12 @@ class Container
     }
 
     /**
+     * Register a given class as a singleton.
+     *
+     * Singletons will cache the result upon resolution.
+     *
+     * Returns itself for chaining.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
@@ -120,6 +134,10 @@ class Container
     }
 
     /**
+     * Delete a given entry.
+     *
+     * Returns **true** if entry is found, **false** otherwise.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @return bool
@@ -141,7 +159,7 @@ class Container
     protected function getEntry(string $class): Entry
     {
         if ($this->notContains($class)) {
-            throw new LogicException($class . ' is not registered.');
+            throw new LogicException("{$class} is not registered.");
         }
         return $this->registered[$class];
     }
@@ -154,6 +172,9 @@ class Container
      */
     protected function setEntry(string $class, Entry $entry): static
     {
+        if ($this->contains($class)) {
+            throw new LogicException("Cannot register class: {$class}. Entry already exists.");
+        }
         $this->registered[$class] = $entry;
         return $this;
     }
@@ -177,6 +198,10 @@ class Container
     }
 
     /**
+     * Extend a registered class.
+     *
+     * The given Closure must return an instance of the original class or else Exception is thrown.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @param Closure(TEntry, Container): TEntry $resolver
@@ -192,6 +217,8 @@ class Container
     }
 
     /**
+     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
+     *
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @param mixed ...$args
@@ -293,7 +320,7 @@ class Container
      * @param ReflectionNamedType $type
      * @return class-string
      */
-    private function revealTrueClass(ReflectionClass $classReflection, ReflectionNamedType $type): string
+    protected function revealTrueClass(ReflectionClass $classReflection, ReflectionNamedType $type): string
     {
         $className = $type->getName();
 
