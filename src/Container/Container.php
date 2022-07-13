@@ -16,7 +16,7 @@ use function strtr;
 class Container
 {
     /**
-     * Registered entries
+     * Registered entries.
      *
      * @var array<class-string, mixed>
      */
@@ -180,6 +180,8 @@ class Container
     }
 
     /**
+     * Set a callback which is called when a class is resolving.
+     *
      * @param Closure(class-string): void $callback
      * @return void
      */
@@ -189,6 +191,8 @@ class Container
     }
 
     /**
+     * Set a callback which is called when a class is resolved.
+     *
      * @param Closure(class-string, mixed): void $callback
      * @return void
      */
