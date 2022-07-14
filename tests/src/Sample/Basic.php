@@ -1,9 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Tests\Kirameki\Sample;
+namespace Tests\Kirameki\Container\Sample;
 
 use DateTime;
-use Kirameki\Utils\Type;
 
 class Basic
 {

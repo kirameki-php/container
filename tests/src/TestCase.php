@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Tests\Kirameki;
+namespace Tests\Kirameki\Container;
 
 use Kirameki\Container\Container;
 use PHPUnit\Framework\TestCase as BaseTestCase;

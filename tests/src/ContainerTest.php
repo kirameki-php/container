@@ -1,22 +1,22 @@
 <?php declare(strict_types=1);
 
-namespace Tests\Kirameki;
+namespace Tests\Kirameki\Container;
 
 use DateTime;
 use LogicException;
-use Tests\Kirameki\Sample\BasicExtended;
-use Tests\Kirameki\Sample\Builtin;
-use Tests\Kirameki\Sample\Circular1;
-use Tests\Kirameki\Sample\Circular2;
-use Tests\Kirameki\Sample\Basic;
-use Tests\Kirameki\Sample\Intersect;
-use Tests\Kirameki\Sample\NoType;
-use Tests\Kirameki\Sample\NoTypeDefault;
-use Tests\Kirameki\Sample\Nullable;
-use Tests\Kirameki\Sample\ParentType;
-use Tests\Kirameki\Sample\SelfType;
-use Tests\Kirameki\Sample\Union;
-use Tests\Kirameki\Sample\Variadic;
+use Tests\Kirameki\Container\Sample\Basic;
+use Tests\Kirameki\Container\Sample\BasicExtended;
+use Tests\Kirameki\Container\Sample\Builtin;
+use Tests\Kirameki\Container\Sample\Circular1;
+use Tests\Kirameki\Container\Sample\Circular2;
+use Tests\Kirameki\Container\Sample\Intersect;
+use Tests\Kirameki\Container\Sample\NoType;
+use Tests\Kirameki\Container\Sample\NoTypeDefault;
+use Tests\Kirameki\Container\Sample\Nullable;
+use Tests\Kirameki\Container\Sample\ParentType;
+use Tests\Kirameki\Container\Sample\SelfType;
+use Tests\Kirameki\Container\Sample\Union;
+use Tests\Kirameki\Container\Sample\Variadic;
 
 class ContainerTest extends TestCase
 {
@@ -282,28 +282,28 @@ class ContainerTest extends TestCase
     public function test_inject_with_intersect_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Tests\Kirameki\Sample\Intersect Invalid type on argument: Tests\Kirameki\Sample\Basic&Tests\Kirameki\Sample\BasicExtended $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage(Intersect::class . ' Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
         $this->container->inject(Intersect::class);
     }
 
     public function test_inject_with_builtin_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Tests\Kirameki\Sample\Builtin Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage(Builtin::class . ' Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
         $this->container->inject(Builtin::class);
     }
 
     public function test_inject_with_union_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Tests\Kirameki\Sample\Union Invalid type on argument: Tests\Kirameki\Sample\Basic|Tests\Kirameki\Sample\BasicExtended $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage(Union::class . ' Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
         $this->container->inject(Union::class);
     }
 
     public function test_inject_with_self_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Circular Dependency detected! Tests\Kirameki\Sample\SelfType -> Tests\Kirameki\Sample\SelfType');
+        $this->expectExceptionMessage('Circular Dependency detected! ' . SelfType::class . ' -> '  . SelfType::class);
         $this->container->inject(SelfType::class);
     }
 

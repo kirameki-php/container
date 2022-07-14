@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Tests\Kirameki\Sample;
+namespace Tests\Kirameki\Container\Sample;
 
 class NoType
 {

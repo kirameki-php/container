@@ -16,12 +16,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Kirameki\\": "src/"
+      "Kirameki\\Container\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Tests\\Kirameki\\": "tests/src/"
+      "Tests\\Kirameki\\Container\\": "tests/src/"
     }
   },
   "config": {
