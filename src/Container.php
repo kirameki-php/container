@@ -30,12 +30,12 @@ class Container
     protected array $processingDependencies = [];
 
     /**
-     * @var array<Closure(class-string): void>
+     * @var array<int, Closure(class-string): void>
      */
     protected array $resolvingCallbacks = [];
 
     /**
-     * @var array<Closure(class-string, mixed): void>
+     * @var array<int, Closure(class-string, mixed): void>
      */
     protected array $resolvedCallbacks = [];
 
