@@ -42,8 +42,8 @@ class ContainerTest extends TestCase
     {
         $this->container->bind(DateTime::class, static fn() => new DateTime());
 
-        $basic1 = $this->container->inject(Basic::class);
-        $basic2 = $this->container->inject(Basic::class);
+        $basic1 = $this->container->make(Basic::class);
+        $basic2 = $this->container->make(Basic::class);
 
         self::assertNotSame($basic2->d, $basic1->d);
         $this->assertTotalResolvingCount(2);
@@ -98,8 +98,8 @@ class ContainerTest extends TestCase
     {
         $this->container->singleton(DateTime::class, static fn() => new DateTime());
 
-        $basic1 = $this->container->inject(Basic::class);
-        $basic2 = $this->container->inject(Basic::class);
+        $basic1 = $this->container->make(Basic::class);
+        $basic2 = $this->container->make(Basic::class);
 
         self::assertSame($basic2->d, $basic1->d);
         $this->assertTotalResolvingCount(1);
@@ -182,45 +182,45 @@ class ContainerTest extends TestCase
         $this->container->resolve(DateTime::class);
     }
 
-    public function test_inject_with_bound_class(): void
+    public function test_make_with_bound_class(): void
     {
         $instance = new Basic(new DateTime());
         $this->container->singleton(Basic::class, fn() => $instance);
 
-        $result = $this->container->inject(Basic::class);
+        $result = $this->container->make(Basic::class);
 
         self::assertSame($instance, $result);
         $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
     }
 
-    public function test_inject_with_parameters(): void
+    public function test_make_with_parameters(): void
     {
         $now = new DateTime();
 
-        $basic = $this->container->inject(Basic::class, $now, 2);
+        $basic = $this->container->make(Basic::class, $now, 2);
         self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
     }
 
-    public function test_inject_with_named_parameters(): void
+    public function test_make_with_named_parameters(): void
     {
         $now = new DateTime();
 
-        $basic = $this->container->inject(Basic::class, d: $now, i: 2);
+        $basic = $this->container->make(Basic::class, d: $now, i: 2);
         self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
     }
 
-    public function test_inject_with_named_params_using_default_value(): void
+    public function test_make_with_named_params_using_default_value(): void
     {
         $now = new DateTime();
 
-        $basic = $this->container->inject(Basic::class, d: $now);
+        $basic = $this->container->make(Basic::class, d: $now);
 
         self::assertSame($now->getTimestamp(), $basic->d->getTimestamp());
         self::assertSame(1, $basic->i);
@@ -228,12 +228,12 @@ class ContainerTest extends TestCase
         $this->assertTotalResolvedCount(0);
     }
 
-    public function test_inject_with_bound_parameter(): void
+    public function test_make_with_bound_parameter(): void
     {
         $now = new DateTime();
 
         $this->container->bind(DateTime::class, static fn() => $now);
-        $basic = $this->container->inject(Basic::class);
+        $basic = $this->container->make(Basic::class);
 
         self::assertSame($now, $basic->d);
         self::assertSame(1, $basic->i);
@@ -241,100 +241,100 @@ class ContainerTest extends TestCase
         $this->assertTotalResolvedCount(1);
     }
 
-    public function test_inject_with_no_types(): void
+    public function test_make_with_no_types(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Argument $a for ' . NoType::class . ' must be a class or have a default value.');
-        $this->container->inject(NoType::class);
+        $this->container->make(NoType::class);
     }
 
-    public function test_inject_with_no_types_but_has_default(): void
+    public function test_make_with_no_types_but_has_default(): void
     {
-        $noType = $this->container->inject(NoTypeDefault::class);
+        $noType = $this->container->make(NoTypeDefault::class);
 
         self::assertSame(1, $noType->a);
     }
 
-    public function test_inject_variadic_type(): void
+    public function test_make_variadic_type(): void
     {
-        $variadic = $this->container->inject(Variadic::class);
+        $variadic = $this->container->make(Variadic::class);
 
         self::assertEmpty($variadic->list);
     }
 
-    public function test_inject_variadic_with_bindings(): void
+    public function test_make_variadic_with_bindings(): void
     {
         $this->container->singleton(DateTime::class, fn() => new DateTime());
-        $variadic = $this->container->inject(Variadic::class);
+        $variadic = $this->container->make(Variadic::class);
 
         self::assertEmpty($variadic->list);
     }
 
-    public function test_inject_variadic_with_arguments(): void
+    public function test_make_variadic_with_arguments(): void
     {
         $now = new DateTime();
-        $variadic = $this->container->inject(Variadic::class, $now, $now);
+        $variadic = $this->container->make(Variadic::class, $now, $now);
 
         self::assertSame($now, $variadic->list[0]);
         self::assertSame($now, $variadic->list[1]);
     }
 
-    public function test_inject_with_intersect_type(): void
+    public function test_make_with_intersect_type(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage(Intersect::class . ' Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
-        $this->container->inject(Intersect::class);
+        $this->container->make(Intersect::class);
     }
 
-    public function test_inject_with_builtin_type(): void
+    public function test_make_with_builtin_type(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage(Builtin::class . ' Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
-        $this->container->inject(Builtin::class);
+        $this->container->make(Builtin::class);
     }
 
-    public function test_inject_with_union_type(): void
+    public function test_make_with_union_type(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage(Union::class . ' Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
-        $this->container->inject(Union::class);
+        $this->container->make(Union::class);
     }
 
-    public function test_inject_with_self_type(): void
+    public function test_make_with_self_type(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Circular Dependency detected! ' . SelfType::class . ' -> '  . SelfType::class);
-        $this->container->inject(SelfType::class);
+        $this->container->make(SelfType::class);
     }
 
-    public function test_inject_with_parent_type(): void
+    public function test_make_with_parent_type(): void
     {
-        $parentType = $this->container->inject(ParentType::class);
+        $parentType = $this->container->make(ParentType::class);
         self::assertSame(1, $parentType->a);
     }
 
-    public function test_inject_with_nullable_type(): void
+    public function test_make_with_nullable_type(): void
     {
         $this->container->bind(DateTime::class, fn () => new DateTime());
-        $nullable = $this->container->inject(Nullable::class);
+        $nullable = $this->container->make(Nullable::class);
         self::assertInstanceOf(DateTime::class, $nullable->a);
 
     }
 
-    public function test_inject_with_missing_parameter(): void
+    public function test_make_with_missing_parameter(): void
     {
         $this->expectError();
         $this->expectErrorMessage('Argument #1 ($d) not passed');
-        $this->container->inject(Basic::class, i: 2);
+        $this->container->make(Basic::class, i: 2);
     }
 
-    public function test_inject_with_circular_dependency(): void
+    public function test_make_with_circular_dependency(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage(strtr('Circular Dependency detected! %c1 -> %c2 -> %c1', [
             '%c1' => Circular1::class,
             '%c2' => Circular2::class,
         ]));
-        $this->container->inject(Circular1::class);
+        $this->container->make(Circular1::class);
     }
 }

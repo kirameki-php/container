@@ -1,37 +1,35 @@
-DOCKER_COMPOSE_COMMAND=cd docker && docker compose -p $(shell basename $(CURDIR))
-
 .PHONY: build
 build:
-	$(DOCKER_COMPOSE_COMMAND) build --pull app
+	docker compose build --pull app
 
 .PHONY: up
 up:
-	$(DOCKER_COMPOSE_COMMAND) up -d
+	docker compose up -d
 
 .PHONY: down
 down:
-	$(DOCKER_COMPOSE_COMMAND) down --remove-orphans
+	docker compose down --remove-orphans
 
 .PHONY: ps
 ps:
-	$(DOCKER_COMPOSE_COMMAND) ps -a
+	docker compose ps -a
 
 .PHONY: logs
 logs:
-	$(DOCKER_COMPOSE_COMMAND) logs
+	docker compose logs
 
 .PHONY: test
 test:
-	$(DOCKER_COMPOSE_COMMAND) run --rm app phpunit
+	docker compose run --rm app phpunit
 
 .PHONY: analyse
 analyze:
-	$(DOCKER_COMPOSE_COMMAND) run --rm app phpstan analyse src --memory-limit 1G
+	docker compose run --rm app composer analyze
 
 .PHONY: bash
 bash:
-	$(DOCKER_COMPOSE_COMMAND) run --rm app bash --login
+	docker compose run --rm app bash --login
 
 .PHONY: update
 update:
-	$(DOCKER_COMPOSE_COMMAND) run --rm app composer update
+	docker compose run --rm app composer update

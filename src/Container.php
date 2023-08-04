@@ -5,6 +5,7 @@ namespace Kirameki\Container;
 use Closure;
 use LogicException;
 use ReflectionClass;
+use ReflectionFunction;
 use ReflectionNamedType;
 use ReflectionParameter;
 use function array_key_exists;
@@ -228,7 +229,7 @@ class Container
      * @param mixed ...$args
      * @return TEntry
      */
-    public function inject(string $class, mixed ...$args): object
+    public function make(string $class, mixed ...$args): object
     {
         $noArgs = count($args) === 0;
 
@@ -246,7 +247,8 @@ class Container
         $this->processingDependencies[$class] = null;
 
         if ($noArgs) {
-            $args = $this->getInjectingArguments($classReflection);
+            $params = $classReflection->getConstructor()?->getParameters() ?? [];
+            $args = $this->getInjectingArguments($params);
         }
 
         unset($this->processingDependencies[$class]);
@@ -256,89 +258,104 @@ class Container
     }
 
     /**
-     * @param ReflectionClass<object> $classReflection
-     * @return array<int, mixed>
+     * @template TResult
+     * @param Closure(): TResult $closure
+     * @return TResult
      */
-    protected function getInjectingArguments(ReflectionClass $classReflection): array
+    public function call(Closure $closure): mixed
     {
-        $args = [];
-        $params = $classReflection->getConstructor()?->getParameters() ?? [];
-        foreach ($params as $param) {
-            $arg = $this->getInjectingArgument($classReflection, $param);
-            if ($arg !== null) {
-                $args[] = $arg;
-            }
-        }
-        return $args;
+        $reflection = new ReflectionFunction($closure);
+        $parameters = $reflection->getParameters();
+
+        $args = $this->getInjectingArguments($parameters);
+
+        return $closure(...$args);
     }
 
     /**
-     * @param ReflectionClass<object> $classReflection
+     * @param list<ReflectionParameter> $params
+     * @return array<int, mixed>
+     */
+    protected function getInjectingArguments(array $params): array
+    {
+        return array_filter(
+            array_map($this->getInjectingArgument(...), $params),
+            fn ($arg) => $arg !== null,
+        );
+    }
+
+    /**
      * @param ReflectionParameter $param
      * @return mixed
      */
-    protected function getInjectingArgument(ReflectionClass $classReflection, ReflectionParameter $param): mixed
+    protected function getInjectingArgument(ReflectionParameter $param): mixed
     {
         if ($param->isVariadic()) {
             return null;
         }
 
+        $class = $param->getDeclaringClass();
         $type = $param->getType();
 
         if ($type === null) {
             if ($param->isDefaultValueAvailable()) {
                 return null;
             }
-            throw new LogicException(strtr('Argument $%name for %class must be a class or have a default value.', [
-                '%name' => $param->name,
-                '%class' => $classReflection->name,
+            throw new LogicException(strtr('[%class] Argument: $%name must be a class or have a default value.', [
+                '%class' => $class?->getName() ?? 'Non-Class',
+                '%name' => $param->getName(),
             ]));
         }
 
-        if (
-            !is_a($type, ReflectionNamedType::class) ||
-            $type->isBuiltin()
-        ) {
+        if (!is_a($type, ReflectionNamedType::class) || $type->isBuiltin()) {
             if ($param->isDefaultValueAvailable()) {
                 return null;
             }
 
-            $errorMessage = '%class Invalid type on argument: %type $%name. ' .
+            $errorMessage = '[%class] Invalid type on argument: %type $%name. ' .
                             'Union/intersect/built-in types are not allowed.';
 
             throw new LogicException(strtr($errorMessage, [
+                '%class' => $class?->getName() ?? 'Non-Class',
                 '%type' => (string) $type,
-                '%name' => $param->name,
-                '%class' => $classReflection->name,
+                '%name' => $param->getName(),
             ]));
         }
 
-        $paramClass = $this->revealTrueClass($classReflection, $type);
+        $paramClass = $class !== null
+            ? $this->revealTrueClass($class, $type->getName())
+            : $type->getName();
+
+        assert(
+            class_exists($paramClass) || interface_exists($paramClass),
+            strtr('Class: %class does not exist.', ['%class' => $paramClass])
+        );
+
         return $this->contains($paramClass)
             ? $this->resolve($paramClass)
-            : $this->inject($paramClass);
+            : $this->make($paramClass);
     }
 
     /**
      * @param ReflectionClass<object> $classReflection
-     * @param ReflectionNamedType $type
-     * @return class-string
+     * @param class-string|string $className
+     * @return class-string<object>
      */
-    protected function revealTrueClass(ReflectionClass $classReflection, ReflectionNamedType $type): string
+    protected function revealTrueClass(
+        ReflectionClass $classReflection,
+        string $className,
+    ): string
     {
-        $className = $type->getName();
-
         if ($className === 'self') {
-            return $classReflection->getName();
+            $className = $classReflection->getName();
         }
 
         if ($className === 'parent') {
             if ($parentReflection = $classReflection->getParentClass()) {
-                return $parentReflection->getName();
+                $className = $parentReflection->getName();
             }
         }
 
-        /** @var class-string */
         return $className;
     }
 }
