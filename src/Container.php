@@ -153,6 +153,68 @@ class Container
     }
 
     /**
+     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param mixed ...$args
+     * @return TEntry
+     */
+    public function make(string $class, mixed ...$args): object
+    {
+        $noArgsDefined = count($args) === 0;
+
+        if ($noArgsDefined && $this->contains($class)) {
+            return $this->resolve($class);
+        }
+
+        $classReflection = new ReflectionClass($class);
+
+        // Check for circular references
+        if (array_key_exists($class, $this->processingDependencies)) {
+            $path = implode(' -> ', [...array_keys($this->processingDependencies), $class]);
+            throw new LogicException('Circular Dependency detected! ' . $path);
+        }
+        $this->processingDependencies[$class] = null;
+
+        if ($noArgsDefined) {
+            $params = $classReflection->getConstructor()?->getParameters() ?? [];
+            $args = $this->getInjectingArguments($classReflection, $params);
+        }
+
+        unset($this->processingDependencies[$class]);
+
+        /** @var TEntry */
+        return $classReflection->newInstance(...$args);
+    }
+
+    /**
+     * @template TResult
+     * @param Closure(): TResult $closure
+     * @return TResult
+     */
+    public function call(Closure $closure): mixed
+    {
+        $reflection = new ReflectionFunction($closure);
+
+        $scopedClass = $reflection->getClosureScopeClass();
+        $parameters = $reflection->getParameters();
+
+        $args = $this->getInjectingArguments($scopedClass, $parameters);
+
+        return $closure(...$args);
+    }
+
+    /**
+     * @param object $instance
+     * @return void
+     */
+    public function inject(object $instance): void
+    {
+
+    }
+
+    /**
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @return Entry<TEntry>
@@ -219,59 +281,6 @@ class Container
         }
         $this->getEntry($class)->extend($resolver);
         return $this;
-    }
-
-    /**
-     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param mixed ...$args
-     * @return TEntry
-     */
-    public function make(string $class, mixed ...$args): object
-    {
-        $noArgs = count($args) === 0;
-
-        if ($noArgs && $this->contains($class)) {
-            return $this->resolve($class);
-        }
-
-        $classReflection = new ReflectionClass($class);
-
-        // Check for circular references
-        if (array_key_exists($class, $this->processingDependencies)) {
-            $path = implode(' -> ', [...array_keys($this->processingDependencies), $class]);
-            throw new LogicException('Circular Dependency detected! ' . $path);
-        }
-        $this->processingDependencies[$class] = null;
-
-        if ($noArgs) {
-            $params = $classReflection->getConstructor()?->getParameters() ?? [];
-            $args = $this->getInjectingArguments($classReflection, $params);
-        }
-
-        unset($this->processingDependencies[$class]);
-
-        /** @var TEntry */
-        return $classReflection->newInstance(...$args);
-    }
-
-    /**
-     * @template TResult
-     * @param Closure(): TResult $closure
-     * @return TResult
-     */
-    public function call(Closure $closure): mixed
-    {
-        $reflection = new ReflectionFunction($closure);
-
-        $scopedClass = $reflection->getClosureScopeClass();
-        $parameters = $reflection->getParameters();
-
-        $args = $this->getInjectingArguments($scopedClass, $parameters);
-
-        return $closure(...$args);
     }
 
     /**
