@@ -265,6 +265,7 @@ class Container
     public function call(Closure $closure): mixed
     {
         $reflection = new ReflectionFunction($closure);
+
         $scopedClass = $reflection->getClosureScopeClass();
         $parameters = $reflection->getParameters();
 
@@ -289,7 +290,7 @@ class Container
     /**
      * @param ReflectionClass<object>|null $declaredClass
      * @param ReflectionParameter $param
-     * @return mixed
+     * @return object|null
      */
     protected function getInjectingArgument(?ReflectionClass $declaredClass, ReflectionParameter $param): mixed
     {
@@ -324,14 +325,7 @@ class Container
             ]));
         }
 
-        $paramClass = $declaredClass !== null
-            ? $this->revealTrueClass($declaredClass, $type->getName())
-            : $type->getName();
-
-        assert(
-            class_exists($paramClass) || interface_exists($paramClass),
-            strtr('Class: %class does not exist.', ['%class' => $paramClass])
-        );
+        $paramClass = $this->revealTrueClass($declaredClass, $type->getName());
 
         return $this->contains($paramClass)
             ? $this->resolve($paramClass)
@@ -339,21 +333,28 @@ class Container
     }
 
     /**
-     * @param ReflectionClass<object> $declaredClass
-     * @param class-string|string $typeName
+     * @param ReflectionClass<object>|null $declaredClass
+     * @param string $typeName
      * @return class-string<object>
      */
-    protected function revealTrueClass(ReflectionClass $declaredClass, string $typeName): string
+    protected function revealTrueClass(?ReflectionClass $declaredClass, string $typeName): string
     {
-        if ($typeName === 'self') {
-            $typeName = $declaredClass->getName();
-        }
+        if ($declaredClass !== null) {
+            if ($typeName === 'self') {
+                $typeName = $declaredClass->getName();
+            }
 
-        if ($typeName === 'parent') {
-            if ($parentReflection = $declaredClass->getParentClass()) {
-                $typeName = $parentReflection->getName();
+            if ($typeName === 'parent') {
+                if ($parentReflection = $declaredClass->getParentClass()) {
+                    $typeName = $parentReflection->getName();
+                }
             }
         }
+
+        assert(
+            class_exists($typeName) || interface_exists($typeName),
+            strtr('Class: %class does not exist.', ['%class' => $typeName])
+        );
 
         return $typeName;
     }
