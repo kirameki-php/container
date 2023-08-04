@@ -4,7 +4,6 @@ namespace Kirameki\Container;
 
 use Closure;
 use LogicException;
-use Webmozart\Assert\Assert;
 use function is_a;
 
 /**
@@ -51,7 +50,7 @@ class Entry
             }
         }
 
-        Assert::notNull($instance);
+        assert($instance !== null);
 
         return $instance;
     }

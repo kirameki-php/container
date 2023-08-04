@@ -3,6 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
+use Error;
 use LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
@@ -244,7 +245,7 @@ class ContainerTest extends TestCase
     public function test_make_with_no_types(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Argument $a for ' . NoType::class . ' must be a class or have a default value.');
+        $this->expectExceptionMessage('[' . NoType::class . '] Argument: $a must be a class or have a default value.');
         $this->container->make(NoType::class);
     }
 
@@ -282,21 +283,21 @@ class ContainerTest extends TestCase
     public function test_make_with_intersect_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage(Intersect::class . ' Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage('[' . Intersect::class . '] Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
         $this->container->make(Intersect::class);
     }
 
     public function test_make_with_builtin_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage(Builtin::class . ' Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage('[' . Builtin::class . '] Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
         $this->container->make(Builtin::class);
     }
 
     public function test_make_with_union_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage(Union::class . ' Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage('[' . Union::class . '] Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
         $this->container->make(Union::class);
     }
 
@@ -323,8 +324,8 @@ class ContainerTest extends TestCase
 
     public function test_make_with_missing_parameter(): void
     {
-        $this->expectError();
-        $this->expectErrorMessage('Argument #1 ($d) not passed');
+        $this->expectExceptionMessage('Argument #1 ($d) not passed');
+        $this->expectException(Error::class);
         $this->container->make(Basic::class, i: 2);
     }
 
