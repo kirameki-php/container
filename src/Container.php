@@ -248,7 +248,7 @@ class Container
 
         if ($noArgs) {
             $params = $classReflection->getConstructor()?->getParameters() ?? [];
-            $args = $this->getInjectingArguments($params);
+            $args = $this->getInjectingArguments($classReflection, $params);
         }
 
         unset($this->processingDependencies[$class]);
@@ -265,36 +265,38 @@ class Container
     public function call(Closure $closure): mixed
     {
         $reflection = new ReflectionFunction($closure);
+        $scopedClass = $reflection->getClosureScopeClass();
         $parameters = $reflection->getParameters();
 
-        $args = $this->getInjectingArguments($parameters);
+        $args = $this->getInjectingArguments($scopedClass, $parameters);
 
         return $closure(...$args);
     }
 
     /**
+     * @param ReflectionClass<object>|null $declaredClass
      * @param list<ReflectionParameter> $params
      * @return array<int, mixed>
      */
-    protected function getInjectingArguments(array $params): array
+    protected function getInjectingArguments(?ReflectionClass $declaredClass, array $params): array
     {
         return array_filter(
-            array_map($this->getInjectingArgument(...), $params),
+            array_map(fn($param) => $this->getInjectingArgument($declaredClass, $param), $params),
             fn ($arg) => $arg !== null,
         );
     }
 
     /**
+     * @param ReflectionClass<object>|null $declaredClass
      * @param ReflectionParameter $param
      * @return mixed
      */
-    protected function getInjectingArgument(ReflectionParameter $param): mixed
+    protected function getInjectingArgument(?ReflectionClass $declaredClass, ReflectionParameter $param): mixed
     {
         if ($param->isVariadic()) {
             return null;
         }
 
-        $class = $param->getDeclaringClass();
         $type = $param->getType();
 
         if ($type === null) {
@@ -302,7 +304,7 @@ class Container
                 return null;
             }
             throw new LogicException(strtr('[%class] Argument: $%name must be a class or have a default value.', [
-                '%class' => $class?->getName() ?? 'Non-Class',
+                '%class' => $declaredClass?->getName() ?? 'Non-Class',
                 '%name' => $param->getName(),
             ]));
         }
@@ -316,14 +318,14 @@ class Container
                             'Union/intersect/built-in types are not allowed.';
 
             throw new LogicException(strtr($errorMessage, [
-                '%class' => $class?->getName() ?? 'Non-Class',
+                '%class' => $declaredClass?->getName() ?? 'Non-Class',
                 '%type' => (string) $type,
                 '%name' => $param->getName(),
             ]));
         }
 
-        $paramClass = $class !== null
-            ? $this->revealTrueClass($class, $type->getName())
+        $paramClass = $declaredClass !== null
+            ? $this->revealTrueClass($declaredClass, $type->getName())
             : $type->getName();
 
         assert(
@@ -337,25 +339,22 @@ class Container
     }
 
     /**
-     * @param ReflectionClass<object> $classReflection
-     * @param class-string|string $className
+     * @param ReflectionClass<object> $declaredClass
+     * @param class-string|string $typeName
      * @return class-string<object>
      */
-    protected function revealTrueClass(
-        ReflectionClass $classReflection,
-        string $className,
-    ): string
+    protected function revealTrueClass(ReflectionClass $declaredClass, string $typeName): string
     {
-        if ($className === 'self') {
-            $className = $classReflection->getName();
+        if ($typeName === 'self') {
+            $typeName = $declaredClass->getName();
         }
 
-        if ($className === 'parent') {
-            if ($parentReflection = $classReflection->getParentClass()) {
-                $className = $parentReflection->getName();
+        if ($typeName === 'parent') {
+            if ($parentReflection = $declaredClass->getParentClass()) {
+                $typeName = $parentReflection->getName();
             }
         }
 
-        return $className;
+        return $typeName;
     }
 }
