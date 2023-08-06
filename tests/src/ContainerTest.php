@@ -3,8 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
-use Error;
-use LogicException;
+use Kirameki\Core\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
 use Tests\Kirameki\Container\Sample\Builtin;
@@ -21,6 +20,10 @@ use Tests\Kirameki\Container\Sample\Variadic;
 
 class ContainerTest extends TestCase
 {
+    public function abc(int $a, int $b, int $c): void
+    {
+    }
+
     public function test_resolve(): void
     {
         $now = new DateTime();
@@ -59,22 +62,13 @@ class ContainerTest extends TestCase
         $this->container->bind(DateTime::class, static fn() => new DateTime());
     }
 
-    public function test_contains(): void
+    public function test_has(): void
     {
-        self::assertFalse($this->container->contains(DateTime::class));
+        self::assertFalse($this->container->has(DateTime::class));
 
         $this->container->bind(DateTime::class, static fn() => new DateTime());
 
-        self::assertTrue($this->container->contains(DateTime::class));
-    }
-
-    public function test_notContains(): void
-    {
-        self::assertTrue($this->container->notContains(DateTime::class));
-
-        $this->container->bind(DateTime::class, static fn() => new DateTime());
-
-        self::assertFalse($this->container->notContains(DateTime::class));
+        self::assertTrue($this->container->has(DateTime::class));
     }
 
     public function test_delete(): void
@@ -82,11 +76,11 @@ class ContainerTest extends TestCase
         $this->container->bind(DateTime::class, static fn() => new DateTime());
 
         // Check existence and delete
-        self::assertTrue($this->container->contains(DateTime::class));
+        self::assertTrue($this->container->has(DateTime::class));
         self::assertTrue($this->container->delete(DateTime::class));
 
         // Check after delete
-        self::assertFalse($this->container->contains(DateTime::class));
+        self::assertFalse($this->container->has(DateTime::class));
 
         // Try Deleting twice
         self::assertFalse($this->container->delete(DateTime::class));
@@ -153,8 +147,8 @@ class ContainerTest extends TestCase
 
     public function test_extend_invalid_return_type(): void
     {
-        $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Instance of ' . DateTime::class . ' expected. ' . NoTypeDefault::class . ' given.');
+        $this->expectException(LogicException::class);
         $this->container->bind(DateTime::class, fn() => new DateTime());
         $this->container->extend(DateTime::class, fn() => new NoTypeDefault());
         $this->container->resolve(DateTime::class);
@@ -244,8 +238,8 @@ class ContainerTest extends TestCase
 
     public function test_make_with_no_types(): void
     {
-        $this->expectException(LogicException::class);
         $this->expectExceptionMessage('[' . NoType::class . '] Argument: $a must be a class or have a default value.');
+        $this->expectException(LogicException::class);
         $this->container->make(NoType::class);
     }
 
@@ -283,21 +277,21 @@ class ContainerTest extends TestCase
     public function test_make_with_intersect_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('[' . Intersect::class . '] Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage('[' . Intersect::class . '] Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Intersection types are not allowed.');
         $this->container->make(Intersect::class);
     }
 
     public function test_make_with_builtin_type(): void
     {
+        $this->expectExceptionMessage('[' . Builtin::class . '] Invalid type on argument: int $a. Built-in types are not allowed.');
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('[' . Builtin::class . '] Invalid type on argument: int $a. Union/intersect/built-in types are not allowed.');
         $this->container->make(Builtin::class);
     }
 
     public function test_make_with_union_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('[' . Union::class . '] Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union/intersect/built-in types are not allowed.');
+        $this->expectExceptionMessage('[' . Union::class . '] Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union types are not allowed.');
         $this->container->make(Union::class);
     }
 
@@ -324,18 +318,18 @@ class ContainerTest extends TestCase
 
     public function test_make_with_missing_parameter(): void
     {
-        $this->expectExceptionMessage('Argument #1 ($d) not passed');
-        $this->expectException(Error::class);
+        $this->expectExceptionMessage('[DateTimeZone] Invalid type on argument: string $timezone. Built-in types are not allowed');
+        $this->expectException(LogicException::class);
         $this->container->make(Basic::class, i: 2);
     }
 
     public function test_make_with_circular_dependency(): void
     {
-        $this->expectException(LogicException::class);
         $this->expectExceptionMessage(strtr('Circular Dependency detected! %c1 -> %c2 -> %c1', [
             '%c1' => Circular1::class,
             '%c2' => Circular2::class,
         ]));
+        $this->expectException(LogicException::class);
         $this->container->make(Circular1::class);
     }
 }

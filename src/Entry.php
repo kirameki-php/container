@@ -3,7 +3,7 @@
 namespace Kirameki\Container;
 
 use Closure;
-use LogicException;
+use Kirameki\Core\Exceptions\LogicException;
 use function is_a;
 
 /**

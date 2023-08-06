@@ -4,7 +4,8 @@
   "type": "library",
   "license": "MIT",
   "require": {
-    "php": ">= 8.2"
+    "php": ">= 8.2",
+    "kirameki/core": "dev-main"
   },
   "require-dev": {
     "phpstan/extension-installer": "^1.1",

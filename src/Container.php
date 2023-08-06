@@ -3,11 +3,13 @@
 namespace Kirameki\Container;
 
 use Closure;
-use LogicException;
+use Kirameki\Core\Exceptions\LogicException;
 use ReflectionClass;
 use ReflectionFunction;
+use ReflectionIntersectionType;
 use ReflectionNamedType;
 use ReflectionParameter;
+use ReflectionUnionType;
 use function array_key_exists;
 use function array_keys;
 use function implode;
@@ -83,23 +85,9 @@ class Container
      * @param class-string<TEntry> $class
      * @return bool
      */
-    public function contains(string $class): bool
+    public function has(string $class): bool
     {
         return array_key_exists($class, $this->registered);
-    }
-
-    /**
-     * Check to see if a given class is missing.
-     *
-     * Returns **false** if class exists, **true** otherwise.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @return bool
-     */
-    public function notContains(string $class): bool
-    {
-        return !$this->contains($class);
     }
 
     /**
@@ -145,7 +133,7 @@ class Container
      */
     public function delete(string $class): bool
     {
-        if ($this->contains($class)) {
+        if ($this->has($class)) {
             unset($this->registered[$class]);
             return true;
         }
@@ -162,30 +150,25 @@ class Container
      */
     public function make(string $class, mixed ...$args): object
     {
-        $noArgsDefined = count($args) === 0;
-
-        if ($noArgsDefined && $this->contains($class)) {
+        if (count($args) === 0 && $this->has($class)) {
             return $this->resolve($class);
         }
 
-        $classReflection = new ReflectionClass($class);
+        $reflection = new ReflectionClass($class);
 
-        // Check for circular references
-        if (array_key_exists($class, $this->processingDependencies)) {
-            $path = implode(' -> ', [...array_keys($this->processingDependencies), $class]);
-            throw new LogicException('Circular Dependency detected! ' . $path);
-        }
+        $this->checkForCircularReference($class);
         $this->processingDependencies[$class] = null;
 
-        if ($noArgsDefined) {
-            $params = $classReflection->getConstructor()?->getParameters() ?? [];
-            $args = $this->getInjectingArguments($classReflection, $params);
+        $params = $reflection->getConstructor()?->getParameters() ?? [];
+        $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
+        foreach ($this->getInjectingArguments($reflection, $params) as $name => $arg) {
+            $args[$name] = $arg;
         }
 
         unset($this->processingDependencies[$class]);
 
         /** @var TEntry */
-        return $classReflection->newInstance(...$args);
+        return $reflection->newInstance(...$args);
     }
 
     /**
@@ -193,25 +176,19 @@ class Container
      * @param Closure(): TResult $closure
      * @return TResult
      */
-    public function call(Closure $closure): mixed
+    public function call(Closure $closure, mixed ...$args): mixed
     {
         $reflection = new ReflectionFunction($closure);
 
         $scopedClass = $reflection->getClosureScopeClass();
-        $parameters = $reflection->getParameters();
 
-        $args = $this->getInjectingArguments($scopedClass, $parameters);
+        $params = $reflection->getParameters();
+        $params = $this->filterOutArgsFromParameters($scopedClass, $params, $args);
+        foreach ($this->getInjectingArguments($scopedClass, $params) as $name => $arg) {
+            $args[$name] = $arg;
+        }
 
         return $closure(...$args);
-    }
-
-    /**
-     * @param object $instance
-     * @return void
-     */
-    public function inject(object $instance): void
-    {
-
     }
 
     /**
@@ -221,8 +198,10 @@ class Container
      */
     protected function getEntry(string $class): Entry
     {
-        if ($this->notContains($class)) {
-            throw new LogicException("{$class} is not registered.");
+        if (!$this->has($class)) {
+            throw new LogicException("{$class} is not registered.", [
+                'class' => $class,
+            ]);
         }
         return $this->registered[$class];
     }
@@ -235,8 +214,11 @@ class Container
      */
     protected function setEntry(string $class, Entry $entry): static
     {
-        if ($this->contains($class)) {
-            throw new LogicException("Cannot register class: {$class}. Entry already exists.");
+        if ($this->has($class)) {
+            throw new LogicException("Cannot register class: {$class}. Entry already exists.", [
+                'class' => $class,
+                'entry' => $entry,
+            ]);
         }
         $this->registered[$class] = $entry;
         return $this;
@@ -276,24 +258,77 @@ class Container
      */
     public function extend(string $class, Closure $resolver): static
     {
-        if ($this->notContains($class)) {
-            throw new LogicException($class . ' cannot be extended since it is not defined.');
+        if (!$this->has($class)) {
+            throw new LogicException($class . ' cannot be extended since it is not defined.', [
+                'class' => $class,
+                'resolver' => $resolver,
+            ]);
         }
         $this->getEntry($class)->extend($resolver);
         return $this;
     }
 
     /**
+     * @param ReflectionClass<object>|null $class
+     * @param array<array-key, mixed> $args
+     * @param list<ReflectionParameter> $params
+     * @return list<ReflectionParameter>
+     */
+    protected function filterOutArgsFromParameters(?ReflectionClass $class, array $params, array $args):array
+    {
+        $paramsMap = null;
+        $isVariadic = false;
+        foreach ($args as $key => $arg) {
+            if (is_int($key)) {
+                if (array_key_exists($key, $params)) {
+                    $isVariadic |= $params[$key]->isVariadic();
+                    unset($params[$key]);
+                } elseif (!$isVariadic) {
+                    throw new LogicException("Argument with position: {$key} does not exist.", [
+                        'class' => $class,
+                        'params' => $params,
+                        'args' => $args,
+                        'position' => $key,
+                    ]);
+                }
+            }
+            if (is_string($key)) {
+                if ($paramsMap === null) {
+                    $paramsMap = [];
+                    foreach ($params as $param) {
+                        $paramsMap[$param->name] = $param;
+                    }
+                }
+                if (array_key_exists($key, $paramsMap)) {
+                    unset($params[$paramsMap[$key]->getPosition()]);
+                } else {
+                    throw new LogicException("Argument with name: {$key} does not exist.", [
+                        'class' => $class,
+                        'params' => $params,
+                        'args' => $args,
+                        'key' => $key,
+                    ]);
+                }
+            }
+        }
+        return $params;
+    }
+
+    /**
      * @param ReflectionClass<object>|null $declaredClass
      * @param list<ReflectionParameter> $params
-     * @return array<int, mixed>
+     * @return array<string, mixed>
      */
     protected function getInjectingArguments(?ReflectionClass $declaredClass, array $params): array
     {
-        return array_filter(
-            array_map(fn($param) => $this->getInjectingArgument($declaredClass, $param), $params),
-            fn ($arg) => $arg !== null,
-        );
+        $args = [];
+        foreach ($params as $param) {
+            $arg = $this->getInjectingArgument($declaredClass, $param);
+            if ($arg !== null) {
+                $args[$param->name] = $arg;
+            }
+        }
+        return $args;
     }
 
     /**
@@ -313,10 +348,13 @@ class Container
             if ($param->isDefaultValueAvailable()) {
                 return null;
             }
-            throw new LogicException(strtr('[%class] Argument: $%name must be a class or have a default value.', [
-                '%class' => $declaredClass?->getName() ?? 'Non-Class',
-                '%name' => $param->getName(),
-            ]));
+
+            $className = $declaredClass?->name ?? 'Non-Class';
+            $paramName = $param->name;
+            throw new LogicException("[{$className}] Argument: \${$paramName} must be a class or have a default value.", [
+                'class' => $declaredClass,
+                'param' => $param,
+            ]);
         }
 
         if (!is_a($type, ReflectionNamedType::class) || $type->isBuiltin()) {
@@ -324,21 +362,23 @@ class Container
                 return null;
             }
 
-            $errorMessage = '[%class] Invalid type on argument: %type $%name. ' .
-                            'Union/intersect/built-in types are not allowed.';
-
-            throw new LogicException(strtr($errorMessage, [
-                '%class' => $declaredClass?->getName() ?? 'Non-Class',
-                '%type' => (string) $type,
-                '%name' => $param->getName(),
-            ]));
+            $className = $declaredClass?->name ?? 'Non-Class';
+            $typeName = (string) $type;
+            $paramName = $param->name;
+            $typeCategory = match (true) {
+                $type instanceof ReflectionUnionType => 'Union types',
+                $type instanceof ReflectionIntersectionType => 'Intersection types',
+                $type instanceof ReflectionNamedType && $type->isBuiltin() => 'Built-in types',
+                default => 'Unknown type',
+            };
+            throw new LogicException("[{$className}] Invalid type on argument: {$typeName} \${$paramName}. {$typeCategory} are not allowed.", [
+                'class' => $declaredClass,
+                'param' => $param,
+            ]);
         }
 
-        $paramClass = $this->revealTrueClass($declaredClass, $type->getName());
-
-        return $this->contains($paramClass)
-            ? $this->resolve($paramClass)
-            : $this->make($paramClass);
+        $paramClass = $this->revealClass($declaredClass, $type->getName());
+        return $this->make($paramClass);
     }
 
     /**
@@ -346,25 +386,42 @@ class Container
      * @param string $typeName
      * @return class-string<object>
      */
-    protected function revealTrueClass(?ReflectionClass $declaredClass, string $typeName): string
+    protected function revealClass(?ReflectionClass $declaredClass, string $typeName): string
     {
         if ($declaredClass !== null) {
             if ($typeName === 'self') {
-                $typeName = $declaredClass->getName();
+                $typeName = $declaredClass->name;
             }
 
             if ($typeName === 'parent') {
                 if ($parentReflection = $declaredClass->getParentClass()) {
-                    $typeName = $parentReflection->getName();
+                    $typeName = $parentReflection->name;
                 }
             }
         }
 
         assert(
             class_exists($typeName) || interface_exists($typeName),
-            strtr('Class: %class does not exist.', ['%class' => $typeName])
+            "Class: {$typeName} does not exist.",
         );
 
         return $typeName;
+    }
+
+    /**
+     * @param class-string $class
+     * @return void
+     */
+    protected function checkForCircularReference(string $class): void
+    {
+        if (!array_key_exists($class, $this->processingDependencies)) {
+            return;
+        }
+
+        $path = implode(' -> ', [...array_keys($this->processingDependencies), $class]);
+        throw new LogicException('Circular Dependency detected! ' . $path, [
+            'path' => $path,
+            'class' => $class,
+        ]);
     }
 }
