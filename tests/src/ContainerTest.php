@@ -17,6 +17,7 @@ use Tests\Kirameki\Container\Sample\ParentType;
 use Tests\Kirameki\Container\Sample\SelfType;
 use Tests\Kirameki\Container\Sample\Union;
 use Tests\Kirameki\Container\Sample\Variadic;
+use TypeError;
 
 class ContainerTest extends TestCase
 {
@@ -30,7 +31,7 @@ class ContainerTest extends TestCase
 
         $this->container->bind(DateTime::class, static fn() => $now);
 
-        $resolved = $this->container->resolve(DateTime::class);
+        $resolved = $this->container->get(DateTime::class);
 
         self::assertSame($now, $resolved);
     }
@@ -39,7 +40,7 @@ class ContainerTest extends TestCase
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage(DateTime::class . ' is not registered.');
-        $this->container->resolve(DateTime::class);
+        $this->container->get(DateTime::class);
     }
 
     public function test_bind(): void
@@ -113,7 +114,7 @@ class ContainerTest extends TestCase
     {
         $this->container->bind(Basic::class, fn() => new Basic(new DateTime()));
         $this->container->extend(Basic::class, fn() => new BasicExtended());
-        $basic = $this->container->resolve(Basic::class);
+        $basic = $this->container->get(Basic::class);
 
         self::assertSame('2022-02-02', $basic->d->format('Y-m-d'));
         self::assertSame(100, $basic->i);
@@ -124,11 +125,11 @@ class ContainerTest extends TestCase
     public function test_extend_resolved_singleton(): void
     {
         $this->container->singleton(Basic::class, fn() => new Basic(new DateTime('1970-01-01')));
-        $basic1 = $this->container->resolve(Basic::class);
+        $basic1 = $this->container->get(Basic::class);
 
         // extend after resolved will reset registration
         $this->container->extend(Basic::class, fn() => new BasicExtended());
-        $basic2 = $this->container->resolve(Basic::class);
+        $basic2 = $this->container->get(Basic::class);
 
         self::assertSame('1970-01-01', $basic1->d->format('Y-m-d'));
         self::assertSame(1, $basic1->i);
@@ -151,7 +152,7 @@ class ContainerTest extends TestCase
         $this->expectException(LogicException::class);
         $this->container->bind(DateTime::class, fn() => new DateTime());
         $this->container->extend(DateTime::class, fn() => new NoTypeDefault());
-        $this->container->resolve(DateTime::class);
+        $this->container->get(DateTime::class);
     }
 
     public function test_resolving(): void
@@ -161,7 +162,7 @@ class ContainerTest extends TestCase
         });
 
         $this->container->singleton(DateTime::class, fn() => new DateTime());
-        $this->container->resolve(DateTime::class);
+        $this->container->get(DateTime::class);
     }
 
     public function test_resolved(): void
@@ -174,7 +175,7 @@ class ContainerTest extends TestCase
         });
 
         $this->container->singleton(DateTime::class, fn() => $now);
-        $this->container->resolve(DateTime::class);
+        $this->container->get(DateTime::class);
     }
 
     public function test_make_with_bound_class(): void
@@ -209,6 +210,27 @@ class ContainerTest extends TestCase
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+    }
+
+    public function test_make_with_null_parameters(): void
+    {
+        $this->expectExceptionMessage(Basic::class . '::__construct(): Argument #1 ($d) must be of type DateTime, null given');
+        $this->expectException(TypeError::class);
+        $this->container->make(Basic::class, null);
+    }
+
+    public function test_make_with_non_existing_positional_parameter(): void
+    {
+        $this->expectExceptionMessage('Argument with position: 1 does not exist for class: ' . Builtin::class . '.');
+        $this->expectException(LogicException::class);
+        $this->container->make(Builtin::class, 1, 2);
+    }
+
+    public function test_make_with_non_existing_named_parameter(): void
+    {
+        $this->expectExceptionMessage('Argument with name: z does not exist for class: ' . Builtin::class . '.');
+        $this->expectException(LogicException::class);
+        $this->container->make(Builtin::class, z: 1);
     }
 
     public function test_make_with_named_params_using_default_value(): void
@@ -276,8 +298,8 @@ class ContainerTest extends TestCase
 
     public function test_make_with_intersect_type(): void
     {
-        $this->expectException(LogicException::class);
         $this->expectExceptionMessage('[' . Intersect::class . '] Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Intersection types are not allowed.');
+        $this->expectException(LogicException::class);
         $this->container->make(Intersect::class);
     }
 

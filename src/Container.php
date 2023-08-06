@@ -199,7 +199,7 @@ class Container implements ContainerInterface
     {
         if (!$this->has($id)) {
             throw new LogicException("{$id} is not registered.", [
-                'class' => $id,
+                'id' => $id,
             ]);
         }
         return $this->registered[$id];
@@ -283,15 +283,14 @@ class Container implements ContainerInterface
                     $isVariadic |= $params[$key]->isVariadic();
                     unset($params[$key]);
                 } elseif (!$isVariadic) {
-                    throw new LogicException("Argument with position: {$key} does not exist.", [
+                    throw new LogicException("Argument with position: {$key} does not exist for class: {$class?->name}.", [
                         'class' => $class,
                         'params' => $params,
                         'args' => $args,
                         'position' => $key,
                     ]);
                 }
-            }
-            if (is_string($key)) {
+            } else {
                 if ($paramsMap === null) {
                     $paramsMap = [];
                     foreach ($params as $param) {
@@ -301,7 +300,7 @@ class Container implements ContainerInterface
                 if (array_key_exists($key, $paramsMap)) {
                     unset($params[$paramsMap[$key]->getPosition()]);
                 } else {
-                    throw new LogicException("Argument with name: {$key} does not exist.", [
+                    throw new LogicException("Argument with name: {$key} does not exist for class: {$class?->name}.", [
                         'class' => $class,
                         'params' => $params,
                         'args' => $args,
@@ -351,7 +350,7 @@ class Container implements ContainerInterface
             $className = $declaredClass?->name ?? 'Non-Class';
             $paramName = $param->name;
             throw new LogicException("[{$className}] Argument: \${$paramName} must be a class or have a default value.", [
-                'class' => $declaredClass,
+                'declaredClass' => $declaredClass,
                 'param' => $param,
             ]);
         }
@@ -371,7 +370,7 @@ class Container implements ContainerInterface
                 default => 'Unknown type',
             };
             throw new LogicException("[{$className}] Invalid type on argument: {$typeName} \${$paramName}. {$typeCategory} are not allowed.", [
-                'class' => $declaredClass,
+                'declaredClass' => $declaredClass,
                 'param' => $param,
             ]);
         }
