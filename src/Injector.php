@@ -133,8 +133,7 @@ class Injector
     {
         $args = [];
         foreach ($params as $param) {
-            $arg = $this->getInjectingArgument($declaredClass, $param);
-            if ($arg !== null) {
+            if ($arg = $this->getInjectingArgument($declaredClass, $param)) {
                 $args[$param->name] = $arg;
             }
         }
@@ -146,7 +145,7 @@ class Injector
      * @param ReflectionParameter $param
      * @return object|null
      */
-    protected function getInjectingArgument(?ReflectionClass $declaredClass, ReflectionParameter $param): mixed
+    protected function getInjectingArgument(?ReflectionClass $declaredClass, ReflectionParameter $param): ?object
     {
         if ($param->isVariadic()) {
             return null;
