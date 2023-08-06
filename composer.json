@@ -5,7 +5,8 @@
   "license": "MIT",
   "require": {
     "php": ">= 8.2",
-    "kirameki/core": "dev-main"
+    "kirameki/core": "dev-main",
+    "psr/container": "^2.0"
   },
   "require-dev": {
     "phpstan/extension-installer": "^1.1",

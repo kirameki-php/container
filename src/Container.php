@@ -4,6 +4,7 @@ namespace Kirameki\Container;
 
 use Closure;
 use Kirameki\Core\Exceptions\LogicException;
+use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionFunction;
 use ReflectionIntersectionType;
@@ -14,9 +15,8 @@ use function array_key_exists;
 use function array_keys;
 use function implode;
 use function is_a;
-use function strtr;
 
-class Container
+class Container implements ContainerInterface
 {
     /**
      * Registered entries.
@@ -33,12 +33,12 @@ class Container
     protected array $processingDependencies = [];
 
     /**
-     * @var array<int, Closure(class-string): void>
+     * @var array<int, Closure(string): void>
      */
     protected array $resolvingCallbacks = [];
 
     /**
-     * @var array<int, Closure(class-string, mixed): void>
+     * @var array<int, Closure(string, mixed): void>
      */
     protected array $resolvedCallbacks = [];
 
@@ -51,17 +51,17 @@ class Container
      * Returns the resolved instance.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @return TEntry
+     * @param class-string<TEntry>|string $id
+     * @return ($id is class-string<TEntry> ? TEntry : mixed)
      */
-    public function resolve(string $class): mixed
+    public function get(string $id): mixed
     {
-        $entry = $this->getEntry($class);
+        $entry = $this->getEntry($id);
         $invokeCallbacks = !$entry->isCached();
 
         if($invokeCallbacks) {
             foreach ($this->resolvingCallbacks as $callback) {
-                $callback($class);
+                $callback($id);
             }
         }
 
@@ -69,7 +69,7 @@ class Container
 
         if ($invokeCallbacks) {
             foreach ($this->resolvedCallbacks as $callback) {
-                $callback($class, $instance);
+                $callback($id, $instance);
             }
         }
 
@@ -81,13 +81,12 @@ class Container
      *
      * Returns **true** if class exists, **false** otherwise.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @param string $id
      * @return bool
      */
-    public function has(string $class): bool
+    public function has(string $id): bool
     {
-        return array_key_exists($class, $this->registered);
+        return array_key_exists($id, $this->registered);
     }
 
     /**
@@ -96,13 +95,13 @@ class Container
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @param class-string<TEntry> $id
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function bind(string $class, Closure $resolver): static
+    public function bind(string $id, Closure $resolver): static
     {
-        return $this->setEntry($class, new Entry($this, $class, $resolver, false));
+        return $this->setEntry($id, new Entry($this, $id, $resolver, false));
     }
 
     /**
@@ -113,13 +112,13 @@ class Container
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @param class-string<TEntry> $id
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function singleton(string $class, Closure $resolver): static
+    public function singleton(string $id, Closure $resolver): static
     {
-        return $this->setEntry($class, new Entry($this, $class, $resolver, true));
+        return $this->setEntry($id, new Entry($this, $id, $resolver, true));
     }
 
     /**
@@ -127,14 +126,13 @@ class Container
      *
      * Returns **true** if entry is found, **false** otherwise.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @param string $id
      * @return bool
      */
-    public function delete(string $class): bool
+    public function delete(string $id): bool
     {
-        if ($this->has($class)) {
-            unset($this->registered[$class]);
+        if ($this->has($id)) {
+            unset($this->registered[$id]);
             return true;
         }
         return false;
@@ -151,7 +149,7 @@ class Container
     public function make(string $class, mixed ...$args): object
     {
         if (count($args) === 0 && $this->has($class)) {
-            return $this->resolve($class);
+            return $this->get($class);
         }
 
         $reflection = new ReflectionClass($class);
@@ -174,6 +172,7 @@ class Container
     /**
      * @template TResult
      * @param Closure(): TResult $closure
+     * @param mixed ...$args
      * @return TResult
      */
     public function call(Closure $closure, mixed ...$args): mixed
@@ -193,17 +192,17 @@ class Container
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @return Entry<TEntry>
+     * @param class-string<TEntry>|string $id
+     * @return ($id is class-string<TEntry> ? Entry<TEntry> : Entry<object>)
      */
-    protected function getEntry(string $class): Entry
+    protected function getEntry(string $id): Entry
     {
-        if (!$this->has($class)) {
-            throw new LogicException("{$class} is not registered.", [
-                'class' => $class,
+        if (!$this->has($id)) {
+            throw new LogicException("{$id} is not registered.", [
+                'class' => $id,
             ]);
         }
-        return $this->registered[$class];
+        return $this->registered[$id];
     }
 
     /**
@@ -227,7 +226,7 @@ class Container
     /**
      * Set a callback which is called when a class is resolving.
      *
-     * @param Closure(class-string): void $callback
+     * @param Closure(string): void $callback
      * @return void
      */
     public function resolving(Closure $callback): void
@@ -238,7 +237,7 @@ class Container
     /**
      * Set a callback which is called when a class is resolved.
      *
-     * @param Closure(class-string, mixed): void $callback
+     * @param Closure(string, mixed): void $callback
      * @return void
      */
     public function resolved(Closure $callback): void
@@ -252,19 +251,19 @@ class Container
      * The given Closure must return an instance of the original class or else Exception is thrown.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @param class-string<TEntry> $id
      * @param Closure(TEntry, Container): TEntry $resolver
      * @return $this
      */
-    public function extend(string $class, Closure $resolver): static
+    public function extend(string $id, Closure $resolver): static
     {
-        if (!$this->has($class)) {
-            throw new LogicException($class . ' cannot be extended since it is not defined.', [
-                'class' => $class,
+        if (!$this->has($id)) {
+            throw new LogicException($id . ' cannot be extended since it is not defined.', [
+                'id' => $id,
                 'resolver' => $resolver,
             ]);
         }
-        $this->getEntry($class)->extend($resolver);
+        $this->getEntry($id)->extend($resolver);
         return $this;
     }
 
