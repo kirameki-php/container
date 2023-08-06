@@ -5,32 +5,19 @@ namespace Kirameki\Container;
 use Closure;
 use Kirameki\Core\Exceptions\LogicException;
 use Psr\Container\ContainerInterface;
-use ReflectionClass;
-use ReflectionFunction;
-use ReflectionIntersectionType;
-use ReflectionNamedType;
-use ReflectionParameter;
-use ReflectionUnionType;
 use function array_key_exists;
-use function array_keys;
-use function implode;
-use function is_a;
 
 class Container implements ContainerInterface
 {
     /**
-     * Registered entries.
-     *
-     * @var array<class-string, mixed>
+     * @var Injector
      */
-    protected array $registered = [];
+    protected Injector $injector;
 
     /**
-     * Only used when calling inject to check for circular dependencies.
-     *
-     * @var array<class-string, null>
+     * @var array<class-string, mixed>
      */
-    protected array $processingDependencies = [];
+    protected array $entries = [];
 
     /**
      * @var array<int, Closure(string): void>
@@ -41,6 +28,14 @@ class Container implements ContainerInterface
      * @var array<int, Closure(string, mixed): void>
      */
     protected array $resolvedCallbacks = [];
+
+    /**
+     * @param Injector|null $injector
+     */
+    public function __construct(?Injector $injector = null)
+    {
+        $this->injector = $injector ?? new Injector($this);
+    }
 
     /**
      * Resolve given class.
@@ -86,7 +81,7 @@ class Container implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->registered);
+        return array_key_exists($id, $this->entries);
     }
 
     /**
@@ -132,117 +127,10 @@ class Container implements ContainerInterface
     public function delete(string $id): bool
     {
         if ($this->has($id)) {
-            unset($this->registered[$id]);
+            unset($this->entries[$id]);
             return true;
         }
         return false;
-    }
-
-    /**
-     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param mixed ...$args
-     * @return TEntry
-     */
-    public function make(string $class, mixed ...$args): object
-    {
-        if (count($args) === 0 && $this->has($class)) {
-            return $this->get($class);
-        }
-
-        $reflection = new ReflectionClass($class);
-
-        $this->checkForCircularReference($class);
-        $this->processingDependencies[$class] = null;
-
-        $params = $reflection->getConstructor()?->getParameters() ?? [];
-        $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
-        foreach ($this->getInjectingArguments($reflection, $params) as $name => $arg) {
-            $args[$name] = $arg;
-        }
-
-        unset($this->processingDependencies[$class]);
-
-        /** @var TEntry */
-        return $reflection->newInstance(...$args);
-    }
-
-    /**
-     * @template TResult
-     * @param Closure(): TResult $closure
-     * @param mixed ...$args
-     * @return TResult
-     */
-    public function call(Closure $closure, mixed ...$args): mixed
-    {
-        $reflection = new ReflectionFunction($closure);
-
-        $scopedClass = $reflection->getClosureScopeClass();
-
-        $params = $reflection->getParameters();
-        $params = $this->filterOutArgsFromParameters($scopedClass, $params, $args);
-        foreach ($this->getInjectingArguments($scopedClass, $params) as $name => $arg) {
-            $args[$name] = $arg;
-        }
-
-        return $closure(...$args);
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? Entry<TEntry> : Entry<object>)
-     */
-    protected function getEntry(string $id): Entry
-    {
-        if (!$this->has($id)) {
-            throw new LogicException("{$id} is not registered.", [
-                'id' => $id,
-            ]);
-        }
-        return $this->registered[$id];
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param Entry<TEntry> $entry
-     * @return $this
-     */
-    protected function setEntry(string $class, Entry $entry): static
-    {
-        if ($this->has($class)) {
-            throw new LogicException("Cannot register class: {$class}. Entry already exists.", [
-                'class' => $class,
-                'entry' => $entry,
-            ]);
-        }
-        $this->registered[$class] = $entry;
-        return $this;
-    }
-
-    /**
-     * Set a callback which is called when a class is resolving.
-     *
-     * @param Closure(string): void $callback
-     * @return void
-     */
-    public function resolving(Closure $callback): void
-    {
-        $this->resolvingCallbacks[] = $callback;
-    }
-
-    /**
-     * Set a callback which is called when a class is resolved.
-     *
-     * @param Closure(string, mixed): void $callback
-     * @return void
-     */
-    public function resolved(Closure $callback): void
-    {
-        $this->resolvedCallbacks[] = $callback;
     }
 
     /**
@@ -268,158 +156,84 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param ReflectionClass<object>|null $class
-     * @param array<array-key, mixed> $args
-     * @param list<ReflectionParameter> $params
-     * @return list<ReflectionParameter>
+     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param mixed ...$args
+     * @return TEntry
      */
-    protected function filterOutArgsFromParameters(?ReflectionClass $class, array $params, array $args):array
+    public function make(string $class, mixed ...$args): object
     {
-        $paramsMap = null;
-        $isVariadic = false;
-        foreach ($args as $key => $arg) {
-            if (is_int($key)) {
-                if (array_key_exists($key, $params)) {
-                    $isVariadic |= $params[$key]->isVariadic();
-                    unset($params[$key]);
-                } elseif (!$isVariadic) {
-                    throw new LogicException("Argument with position: {$key} does not exist for class: {$class?->name}.", [
-                        'class' => $class,
-                        'params' => $params,
-                        'args' => $args,
-                        'position' => $key,
-                    ]);
-                }
-            } else {
-                if ($paramsMap === null) {
-                    $paramsMap = [];
-                    foreach ($params as $param) {
-                        $paramsMap[$param->name] = $param;
-                    }
-                }
-                if (array_key_exists($key, $paramsMap)) {
-                    unset($params[$paramsMap[$key]->getPosition()]);
-                } else {
-                    throw new LogicException("Argument with name: {$key} does not exist for class: {$class?->name}.", [
-                        'class' => $class,
-                        'params' => $params,
-                        'args' => $args,
-                        'key' => $key,
-                    ]);
-                }
-            }
+        if (count($args) === 0 && $this->has($class)) {
+            return $this->get($class);
         }
-        return $params;
+        return $this->injector->constructorInjection($class, $args);
     }
 
     /**
-     * @param ReflectionClass<object>|null $declaredClass
-     * @param list<ReflectionParameter> $params
-     * @return array<string, mixed>
+     * @template TResult
+     * @param Closure(): TResult $closure
+     * @param mixed ...$args
+     * @return TResult
      */
-    protected function getInjectingArguments(?ReflectionClass $declaredClass, array $params): array
+    public function call(Closure $closure, mixed ...$args): mixed
     {
-        $args = [];
-        foreach ($params as $param) {
-            $arg = $this->getInjectingArgument($declaredClass, $param);
-            if ($arg !== null) {
-                $args[$param->name] = $arg;
-            }
-        }
-        return $args;
+        return $this->injector->closureInjection($closure, $args);
     }
 
     /**
-     * @param ReflectionClass<object>|null $declaredClass
-     * @param ReflectionParameter $param
-     * @return object|null
+     * @template TEntry of object
+     * @param class-string<TEntry>|string $id
+     * @return ($id is class-string<TEntry> ? Entry<TEntry> : Entry<object>)
      */
-    protected function getInjectingArgument(?ReflectionClass $declaredClass, ReflectionParameter $param): mixed
+    protected function getEntry(string $id): Entry
     {
-        if ($param->isVariadic()) {
-            return null;
-        }
-
-        $type = $param->getType();
-
-        if ($type === null) {
-            if ($param->isDefaultValueAvailable()) {
-                return null;
-            }
-
-            $className = $declaredClass?->name ?? 'Non-Class';
-            $paramName = $param->name;
-            throw new LogicException("[{$className}] Argument: \${$paramName} must be a class or have a default value.", [
-                'declaredClass' => $declaredClass,
-                'param' => $param,
+        if (!$this->has($id)) {
+            throw new LogicException("{$id} is not registered.", [
+                'id' => $id,
             ]);
         }
+        return $this->entries[$id];
+    }
 
-        if (!is_a($type, ReflectionNamedType::class) || $type->isBuiltin()) {
-            if ($param->isDefaultValueAvailable()) {
-                return null;
-            }
-
-            $className = $declaredClass?->name ?? 'Non-Class';
-            $typeName = (string) $type;
-            $paramName = $param->name;
-            $typeCategory = match (true) {
-                $type instanceof ReflectionUnionType => 'Union types',
-                $type instanceof ReflectionIntersectionType => 'Intersection types',
-                $type instanceof ReflectionNamedType && $type->isBuiltin() => 'Built-in types',
-                default => 'Unknown type',
-            };
-            throw new LogicException("[{$className}] Invalid type on argument: {$typeName} \${$paramName}. {$typeCategory} are not allowed.", [
-                'declaredClass' => $declaredClass,
-                'param' => $param,
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param Entry<TEntry> $entry
+     * @return $this
+     */
+    protected function setEntry(string $class, Entry $entry): static
+    {
+        if ($this->has($class)) {
+            throw new LogicException("Cannot register class: {$class}. Entry already exists.", [
+                'class' => $class,
+                'entry' => $entry,
             ]);
         }
-
-        $paramClass = $this->revealClass($declaredClass, $type->getName());
-        return $this->make($paramClass);
+        $this->entries[$class] = $entry;
+        return $this;
     }
 
     /**
-     * @param ReflectionClass<object>|null $declaredClass
-     * @param string $typeName
-     * @return class-string<object>
-     */
-    protected function revealClass(?ReflectionClass $declaredClass, string $typeName): string
-    {
-        if ($declaredClass !== null) {
-            if ($typeName === 'self') {
-                $typeName = $declaredClass->name;
-            }
-
-            if ($typeName === 'parent') {
-                if ($parentReflection = $declaredClass->getParentClass()) {
-                    $typeName = $parentReflection->name;
-                }
-            }
-        }
-
-        assert(
-            class_exists($typeName) || interface_exists($typeName),
-            "Class: {$typeName} does not exist.",
-        );
-
-        return $typeName;
-    }
-
-    /**
-     * @param class-string $class
+     * Set a callback which is called when a class is resolving.
+     *
+     * @param Closure(string): void $callback
      * @return void
      */
-    protected function checkForCircularReference(string $class): void
+    public function resolving(Closure $callback): void
     {
-        if (!array_key_exists($class, $this->processingDependencies)) {
-            return;
-        }
+        $this->resolvingCallbacks[] = $callback;
+    }
 
-        $path = implode(' -> ', [...array_keys($this->processingDependencies), $class]);
-        throw new LogicException('Circular Dependency detected! ' . $path, [
-            'path' => $path,
-            'class' => $class,
-        ]);
+    /**
+     * Set a callback which is called when a class is resolved.
+     *
+     * @param Closure(string, mixed): void $callback
+     * @return void
+     */
+    public function resolved(Closure $callback): void
+    {
+        $this->resolvedCallbacks[] = $callback;
     }
 }
