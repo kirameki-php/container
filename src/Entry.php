@@ -28,10 +28,10 @@ class Entry
      * @param bool $cacheable
      */
     public function __construct(
-        protected Container $container,
-        protected string $class,
-        protected Closure $resolver,
-        protected bool $cacheable,
+        protected readonly Container $container,
+        public readonly string $class,
+        protected readonly Closure $resolver,
+        public readonly bool $cacheable,
     )
     {
     }
@@ -50,23 +50,20 @@ class Entry
             }
         }
 
-        assert($instance !== null);
-
         return $instance;
     }
 
     /**
      * @return TEntry
      */
-    protected function resolve(): mixed
+    protected function resolve(): object
     {
         $instance = ($this->resolver)($this->container);
+        $this->assertInherited($instance);
 
         foreach ($this->extenders as $extender) {
             $instance = $extender($instance, $this->container);
-            if (!is_a($instance, $this->class)) {
-                throw new LogicException('Instance of ' . $this->class . ' expected. ' . $instance::class . ' given.');
-            }
+            $this->assertInherited($instance);
         }
 
         return $instance;
@@ -102,5 +99,16 @@ class Entry
     {
         $this->cached = null;
         return $this;
+    }
+
+    /**
+     * @param mixed $instance
+     * @return void
+     */
+    protected function assertInherited(mixed $instance): void
+    {
+        if (!is_a($instance, $this->class)) {
+            throw new LogicException('Instance of ' . $this->class . ' expected. ' . $instance::class . ' given.');
+        }
     }
 }

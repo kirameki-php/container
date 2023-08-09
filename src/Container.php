@@ -20,12 +20,17 @@ class Container implements ContainerInterface
     protected array $entries = [];
 
     /**
-     * @var array<int, Closure(string): void>
+     * @var list<Closure(Entry<object>): mixed>
+     */
+    protected array $boundCallbacks = [];
+
+    /**
+     * @var list<Closure(Entry<object>): mixed>
      */
     protected array $resolvingCallbacks = [];
 
     /**
-     * @var array<int, Closure(string, mixed): void>
+     * @var list<Closure(Entry<object>, mixed): mixed>
      */
     protected array $resolvedCallbacks = [];
 
@@ -56,7 +61,7 @@ class Container implements ContainerInterface
 
         if($invokeCallbacks) {
             foreach ($this->resolvingCallbacks as $callback) {
-                $callback($id);
+                $callback($entry);
             }
         }
 
@@ -64,7 +69,7 @@ class Container implements ContainerInterface
 
         if ($invokeCallbacks) {
             foreach ($this->resolvedCallbacks as $callback) {
-                $callback($id, $instance);
+                $callback($entry, $instance);
             }
         }
 
@@ -156,33 +161,6 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param mixed ...$args
-     * @return TEntry
-     */
-    public function make(string $class, mixed ...$args): object
-    {
-        if (count($args) === 0 && $this->has($class)) {
-            return $this->get($class);
-        }
-        return $this->injector->constructorInjection($class, $args);
-    }
-
-    /**
-     * @template TResult
-     * @param Closure(): TResult $closure
-     * @param mixed ...$args
-     * @return TResult
-     */
-    public function call(Closure $closure, mixed ...$args): mixed
-    {
-        return $this->injector->closureInjection($closure, $args);
-    }
-
-    /**
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
      * @return ($id is class-string<TEntry> ? Entry<TEntry> : Entry<object>)
@@ -212,16 +190,60 @@ class Container implements ContainerInterface
             ]);
         }
         $this->entries[$class] = $entry;
+
+        foreach ($this->boundCallbacks as $callback) {
+            $callback($entry);
+        }
+
         return $this;
+    }
+
+    /**
+     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param mixed ...$args
+     * @return TEntry
+     */
+    public function make(string $class, mixed ...$args): object
+    {
+        if (count($args) === 0 && $this->has($class)) {
+            return $this->get($class);
+        }
+
+        return $this->injector->constructorInjection($class, $args);
+    }
+
+    /**
+     * @template TResult
+     * @param Closure(): TResult $closure
+     * @param mixed ...$args
+     * @return TResult
+     */
+    public function call(Closure $closure, mixed ...$args): mixed
+    {
+        return $this->injector->closureInjection($closure, $args);
+    }
+
+    /**
+     * Set a callback which is called when a class is bound.
+     *
+     * @param Closure(Entry<object>): mixed $callback
+     * @return void
+     */
+    public function onBound(Closure $callback): void
+    {
+        $this->boundCallbacks[] = $callback;
     }
 
     /**
      * Set a callback which is called when a class is resolving.
      *
-     * @param Closure(string): void $callback
+     * @param Closure(Entry<object>): mixed $callback
      * @return void
      */
-    public function resolving(Closure $callback): void
+    public function onResolving(Closure $callback): void
     {
         $this->resolvingCallbacks[] = $callback;
     }
@@ -229,10 +251,10 @@ class Container implements ContainerInterface
     /**
      * Set a callback which is called when a class is resolved.
      *
-     * @param Closure(string, mixed): void $callback
+     * @param Closure(Entry<object>, mixed): mixed $callback
      * @return void
      */
-    public function resolved(Closure $callback): void
+    public function onResolved(Closure $callback): void
     {
         $this->resolvedCallbacks[] = $callback;
     }

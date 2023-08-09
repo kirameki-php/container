@@ -31,12 +31,12 @@ class TestCase extends BaseTestCase
         parent::setUp();
         $this->container = new Container();
 
-        $this->container->resolving(function (string $class) {
+        $this->container->onResolving(function (string $class) {
             $this->countResolving[$class] ??= 0;
             ++$this->countResolving[$class];
         });
 
-        $this->container->resolved(function (string $class) {
+        $this->container->onResolved(function (string $class) {
             $this->countResolved[$class] ??= 0;
             ++$this->countResolved[$class];
         });
