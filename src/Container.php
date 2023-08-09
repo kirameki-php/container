@@ -22,11 +22,6 @@ class Container implements ContainerInterface
     /**
      * @var list<Closure(Entry<object>): mixed>
      */
-    protected array $boundCallbacks = [];
-
-    /**
-     * @var list<Closure(Entry<object>): mixed>
-     */
     protected array $resolvingCallbacks = [];
 
     /**
@@ -190,10 +185,6 @@ class Container implements ContainerInterface
             ]);
         }
         $this->entries[$class] = $entry;
-
-        foreach ($this->boundCallbacks as $callback) {
-            $callback($entry);
-        }
 
         return $this;
     }
