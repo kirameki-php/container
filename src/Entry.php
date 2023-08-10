@@ -48,7 +48,7 @@ class Entry
     /**
      * @return TEntry
      */
-    public function getInstance(): mixed
+    public function getInstance(): object
     {
         $instance = $this->cached;
 
