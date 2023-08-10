@@ -7,33 +7,42 @@ use Kirameki\Core\Exceptions\LogicException;
 use function is_a;
 
 /**
- * @template TEntry of object
+ * @template-covariant TEntry of object
  */
 class Entry
 {
-    /**
-     * @var array<int, Closure(TEntry, Container): TEntry>
-     */
+    /** @var Lifetime */
+    public Lifetime $lifetime = Lifetime::Transient;
+
+    /** @var Closure(Container): TEntry|null */
+    protected ?Closure $resolver = null;
+
+    /** @var array<int, Closure(TEntry, Container): TEntry> */
     protected array $extenders = [];
 
-    /**
-     * @var TEntry|null
-     */
+    /** @var TEntry|null */
     protected mixed $cached = null;
 
     /**
      * @param Container $container
      * @param class-string<TEntry> $class
-     * @param Closure(Container): TEntry $resolver
-     * @param bool $cacheable
      */
     public function __construct(
         protected readonly Container $container,
         public readonly string $class,
-        protected readonly Closure $resolver,
-        public readonly bool $cacheable,
     )
     {
+    }
+
+    /**
+     * @param Closure(Container): TEntry $resolver
+     * @param Lifetime $lifetime
+     * @return void
+     */
+    public function setResolver(Closure $resolver, Lifetime $lifetime): void
+    {
+        $this->resolver = $resolver;
+        $this->lifetime = $lifetime;
     }
 
     /**
@@ -45,7 +54,7 @@ class Entry
 
         if ($instance === null) {
             $instance = $this->resolve();
-            if ($this->cacheable) {
+            if ($this->lifetime === Lifetime::Singleton) {
                 $this->cached = $instance;
             }
         }
@@ -58,6 +67,12 @@ class Entry
      */
     protected function resolve(): object
     {
+        if ($this->resolver === null) {
+            throw new LogicException("{$this->class} is not registered.", [
+                'this' => $this,
+            ]);
+        }
+
         $instance = ($this->resolver)($this->container);
         $this->assertInherited($instance);
 
@@ -82,6 +97,14 @@ class Entry
         }
 
         return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isResolvable(): bool
+    {
+        return $this->resolver !== null;
     }
 
     /**

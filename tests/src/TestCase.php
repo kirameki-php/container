@@ -3,6 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use Kirameki\Container\Container;
+use Kirameki\Container\Entry;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use function array_sum;
 
@@ -31,14 +32,14 @@ class TestCase extends BaseTestCase
         parent::setUp();
         $this->container = new Container();
 
-        $this->container->onResolving(function (string $class) {
-            $this->countResolving[$class] ??= 0;
-            ++$this->countResolving[$class];
+        $this->container->onResolving(function (Entry $entry) {
+            $this->countResolving[$entry->class] ??= 0;
+            ++$this->countResolving[$entry->class];
         });
 
-        $this->container->onResolved(function (string $class) {
-            $this->countResolved[$class] ??= 0;
-            ++$this->countResolved[$class];
+        $this->container->onResolved(function (Entry $entry) {
+            $this->countResolved[$entry->class] ??= 0;
+            ++$this->countResolved[$entry->class];
         });
     }
 

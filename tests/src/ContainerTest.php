@@ -3,6 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
+use Kirameki\Container\Entry;
 use Kirameki\Core\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
@@ -157,8 +158,8 @@ class ContainerTest extends TestCase
 
     public function test_resolving(): void
     {
-        $this->container->onResolving(static function(string $class) {
-            self::assertSame(DateTime::class, $class);
+        $this->container->onResolving(static function(Entry $entry) {
+            self::assertSame(DateTime::class, $entry->class);
         });
 
         $this->container->singleton(DateTime::class, fn() => new DateTime());
@@ -169,9 +170,9 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $this->container->onResolved(static function(string $class, mixed $instance) use ($now): void {
-            self::assertSame(DateTime::class, $class);
-            self::assertSame($now, $instance);
+        $this->container->onResolved(static function(Entry $entry) use ($now): void {
+            self::assertSame(DateTime::class, $entry->class);
+            self::assertSame($now, $entry->getInstance());
         });
 
         $this->container->singleton(DateTime::class, fn() => $now);

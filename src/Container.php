@@ -15,7 +15,7 @@ class Container implements ContainerInterface
     protected Injector $injector;
 
     /**
-     * @var array<class-string, mixed>
+     * @var array<class-string, Entry<object>>
      */
     protected array $entries = [];
 
@@ -81,7 +81,7 @@ class Container implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->entries);
+        return array_key_exists($id, $this->entries) && $this->entries[$id]->isResolvable();
     }
 
     /**
@@ -96,7 +96,7 @@ class Container implements ContainerInterface
      */
     public function bind(string $id, Closure $resolver): static
     {
-        return $this->setEntry($id, new Entry($this, $id, $resolver, false));
+        return $this->setEntry($id, $resolver, Lifetime::Transient);
     }
 
     /**
@@ -113,7 +113,7 @@ class Container implements ContainerInterface
      */
     public function singleton(string $id, Closure $resolver): static
     {
-        return $this->setEntry($id, new Entry($this, $id, $resolver, true));
+        return $this->setEntry($id, $resolver, Lifetime::Singleton);
     }
 
     /**
@@ -162,7 +162,7 @@ class Container implements ContainerInterface
      */
     protected function getEntry(string $id): Entry
     {
-        if (!$this->has($id)) {
+        if (!array_key_exists($id, $this->entries)) {
             throw new LogicException("{$id} is not registered.", [
                 'id' => $id,
             ]);
@@ -173,18 +173,19 @@ class Container implements ContainerInterface
     /**
      * @template TEntry of object
      * @param class-string<TEntry> $class
-     * @param Entry<TEntry> $entry
+     * @param Closure(Container): TEntry $resolver
+     * @param Lifetime $lifetime
      * @return $this
      */
-    protected function setEntry(string $class, Entry $entry): static
+    protected function setEntry(string $class, Closure $resolver, Lifetime $lifetime): static
     {
         if ($this->has($class)) {
             throw new LogicException("Cannot register class: {$class}. Entry already exists.", [
                 'class' => $class,
-                'entry' => $entry,
             ]);
         }
-        $this->entries[$class] = $entry;
+        $this->entries[$class] ??= new Entry($this, $class);
+        $this->entries[$class]->setResolver($resolver, $lifetime);
 
         return $this;
     }
@@ -215,17 +216,6 @@ class Container implements ContainerInterface
     public function call(Closure $closure, mixed ...$args): mixed
     {
         return $this->injector->closureInjection($closure, $args);
-    }
-
-    /**
-     * Set a callback which is called when a class is bound.
-     *
-     * @param Closure(Entry<object>): mixed $callback
-     * @return void
-     */
-    public function onBound(Closure $callback): void
-    {
-        $this->boundCallbacks[] = $callback;
     }
 
     /**
