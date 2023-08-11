@@ -5,5 +5,6 @@ namespace Kirameki\Container;
 enum Lifetime
 {
     case Transient;
+    case Scoped;
     case Singleton;
 }

@@ -9,24 +9,19 @@ use function array_key_exists;
 
 class Container implements ContainerInterface
 {
-    /**
-     * @var Injector
-     */
+    /** @var Injector */
     protected Injector $injector;
 
-    /**
-     * @var array<class-string, Entry<object>>
-     */
+    /** @var array<class-string, Entry<object>> */
     protected array $entries = [];
 
-    /**
-     * @var list<Closure(Entry<object>): mixed>
-     */
+    /** @var array<class-string, null> */
+    protected array $scopedEntries = [];
+
+    /** @var list<Closure(Entry<object>): mixed> */
     protected array $resolvingCallbacks = [];
 
-    /**
-     * @var list<Closure(Entry<object>, mixed): mixed>
-     */
+    /** @var list<Closure(Entry<object>, mixed): mixed> */
     protected array $resolvedCallbacks = [];
 
     /**
@@ -84,6 +79,11 @@ class Container implements ContainerInterface
         return array_key_exists($id, $this->entries) && $this->entries[$id]->isResolvable();
     }
 
+    public function isCached(string $id): bool
+    {
+        return array_key_exists($id, $this->entries) && $this->entries[$id]->isCached();
+    }
+
     /**
      * Register a given class.
      *
@@ -97,6 +97,22 @@ class Container implements ContainerInterface
     public function bind(string $id, Closure $resolver): static
     {
         return $this->setEntry($id, $resolver, Lifetime::Transient);
+    }
+
+    /**
+     * Register a given class with scoped lifetime.
+     *
+     * Returns itself for chaining.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Closure(Container): TEntry $resolver
+     * @return $this
+     */
+    public function scoped(string $id, Closure $resolver): static
+    {
+        $this->scopedEntries[$id] = null;
+        return $this->setEntry($id, $resolver, Lifetime::Scoped);
     }
 
     /**
@@ -127,10 +143,34 @@ class Container implements ContainerInterface
     public function delete(string $id): bool
     {
         if ($this->has($id)) {
-            unset($this->entries[$id]);
+            unset($this->entries[$id], $this->scopedEntries[$id]);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Clears all entries.
+     *
+     * @return $this
+     */
+    public function clearEntries(): static
+    {
+        $this->entries = [];
+        $this->scopedEntries = [];
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function clearScopedEntries(): static
+    {
+        foreach (array_keys($this->scopedEntries) as $id) {
+            unset($this->entries[$id]);
+        }
+        $this->scopedEntries = [];
+        return $this;
     }
 
     /**
@@ -145,12 +185,6 @@ class Container implements ContainerInterface
      */
     public function extend(string $id, Closure $resolver): static
     {
-        if (!$this->has($id)) {
-            throw new LogicException($id . ' cannot be extended since it is not defined.', [
-                'id' => $id,
-                'resolver' => $resolver,
-            ]);
-        }
         $this->getEntry($id)->extend($resolver);
         return $this;
     }
