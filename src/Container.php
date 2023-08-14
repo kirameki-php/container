@@ -7,7 +7,7 @@ use Kirameki\Core\Exceptions\LogicException;
 use Psr\Container\ContainerInterface;
 use function array_key_exists;
 
-class Container implements ContainerInterface
+class Container
 {
     /** @var Injector */
     protected Injector $injector;
@@ -41,12 +41,12 @@ class Container implements ContainerInterface
      * Returns the resolved instance.
      *
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? TEntry : mixed)
+     * @param class-string<TEntry> $class
+     * @return TEntry
      */
-    public function get(string $id): mixed
+    public function get(string $class): mixed
     {
-        $entry = $this->getEntry($id);
+        $entry = $this->getEntry($class);
         $invokeCallbacks = !$entry->isCached();
 
         if($invokeCallbacks) {
@@ -71,17 +71,17 @@ class Container implements ContainerInterface
      *
      * Returns **true** if class exists, **false** otherwise.
      *
-     * @param string $id
+     * @param class-string $class
      * @return bool
      */
-    public function has(string $id): bool
+    public function has(string $class): bool
     {
-        return array_key_exists($id, $this->entries) && $this->entries[$id]->isResolvable();
+        return array_key_exists($class, $this->entries) && $this->entries[$class]->isResolvable();
     }
 
-    public function isCached(string $id): bool
+    public function isCached(string $class): bool
     {
-        return array_key_exists($id, $this->entries) && $this->entries[$id]->isCached();
+        return array_key_exists($class, $this->entries) && $this->entries[$class]->isCached();
     }
 
     /**
@@ -90,13 +90,13 @@ class Container implements ContainerInterface
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function bind(string $id, Closure $resolver): static
+    public function bind(string $class, Closure $resolver): static
     {
-        return $this->setEntry($id, $resolver, Lifetime::Transient);
+        return $this->setEntry($class, $resolver, Lifetime::Transient);
     }
 
     /**
@@ -105,14 +105,14 @@ class Container implements ContainerInterface
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function scoped(string $id, Closure $resolver): static
+    public function scoped(string $class, Closure $resolver): static
     {
-        $this->scopedEntries[$id] = null;
-        return $this->setEntry($id, $resolver, Lifetime::Scoped);
+        $this->scopedEntries[$class] = null;
+        return $this->setEntry($class, $resolver, Lifetime::Scoped);
     }
 
     /**
@@ -123,13 +123,13 @@ class Container implements ContainerInterface
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(Container): TEntry $resolver
      * @return $this
      */
-    public function singleton(string $id, Closure $resolver): static
+    public function singleton(string $class, Closure $resolver): static
     {
-        return $this->setEntry($id, $resolver, Lifetime::Singleton);
+        return $this->setEntry($class, $resolver, Lifetime::Singleton);
     }
 
     /**
@@ -137,13 +137,13 @@ class Container implements ContainerInterface
      *
      * Returns **true** if entry is found, **false** otherwise.
      *
-     * @param string $id
+     * @param class-string $class
      * @return bool
      */
-    public function delete(string $id): bool
+    public function delete(string $class): bool
     {
-        if ($this->has($id)) {
-            unset($this->entries[$id], $this->scopedEntries[$id]);
+        if ($this->has($class)) {
+            unset($this->entries[$class], $this->scopedEntries[$class]);
             return true;
         }
         return false;
@@ -166,8 +166,8 @@ class Container implements ContainerInterface
      */
     public function clearScopedEntries(): static
     {
-        foreach (array_keys($this->scopedEntries) as $id) {
-            unset($this->entries[$id]);
+        foreach (array_keys($this->scopedEntries) as $class) {
+            unset($this->entries[$class]);
         }
         $this->scopedEntries = [];
         return $this;
@@ -179,29 +179,29 @@ class Container implements ContainerInterface
      * The given Closure must return an instance of the original class or else Exception is thrown.
      *
      * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string<TEntry> $class
      * @param Closure(TEntry, Container): TEntry $resolver
      * @return $this
      */
-    public function extend(string $id, Closure $resolver): static
+    public function extend(string $class, Closure $resolver): static
     {
-        $this->getEntry($id)->extend($resolver);
+        $this->getEntry($class)->extend($resolver);
         return $this;
     }
 
     /**
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? Entry<TEntry> : Entry<object>)
+     * @param class-string<TEntry> $class
+     * @return Entry<TEntry>
      */
-    protected function getEntry(string $id): Entry
+    protected function getEntry(string $class): Entry
     {
-        if (!array_key_exists($id, $this->entries)) {
-            throw new LogicException("{$id} is not registered.", [
-                'id' => $id,
+        if (!array_key_exists($class, $this->entries)) {
+            throw new LogicException("{$class} is not registered.", [
+                'class' => $class,
             ]);
         }
-        return $this->entries[$id];
+        return $this->entries[$class];
     }
 
     /**
