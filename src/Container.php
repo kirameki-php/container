@@ -4,7 +4,6 @@ namespace Kirameki\Container;
 
 use Closure;
 use Kirameki\Core\Exceptions\LogicException;
-use Psr\Container\ContainerInterface;
 use function array_key_exists;
 
 class Container
@@ -201,6 +200,7 @@ class Container
                 'class' => $class,
             ]);
         }
+        /** @var Entry<TEntry> */
         return $this->entries[$class];
     }
 
