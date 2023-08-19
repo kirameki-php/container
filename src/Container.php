@@ -75,12 +75,11 @@ class Container
      * @param class-string<TEntry> $class
      * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
      * @param Lifetime $lifetime
-     * @return $this
+     * @return void
      */
-    public function set(string $class, Closure $resolver, Lifetime $lifetime = Lifetime::Transient): static
+    public function set(string $class, Closure $resolver, Lifetime $lifetime = Lifetime::Transient): void
     {
         $this->setEntry($class)->setResolver($resolver, $lifetime);
-        return $this;
     }
 
     /**
@@ -91,12 +90,12 @@ class Container
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
-     * @return $this
+     * @return void
      */
-    public function scoped(string $class, Closure $resolver): static
+    public function scoped(string $class, Closure $resolver): void
     {
         $this->scopedEntries[$class] = null;
-        return $this->set($class, $resolver, Lifetime::Scoped);
+        $this->set($class, $resolver, Lifetime::Scoped);
     }
 
     /**
@@ -109,11 +108,11 @@ class Container
      * @template TEntry of object
      * @param class-string<TEntry> $class
      * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
-     * @return $this
+     * @return void
      */
-    public function singleton(string $class, Closure $resolver): static
+    public function singleton(string $class, Closure $resolver): void
     {
-        return $this->set($class, $resolver, Lifetime::Singleton);
+        $this->set($class, $resolver, Lifetime::Singleton);
     }
 
     /**
@@ -146,6 +145,10 @@ class Container
         return array_key_exists($class, $this->entries) && $this->entries[$class]->isResolvable();
     }
 
+    /**
+     * @param class-string $class
+     * @return bool
+     */
     public function isCached(string $class): bool
     {
         return array_key_exists($class, $this->entries) && $this->entries[$class]->isCached();
