@@ -33,13 +33,13 @@ class TestCase extends BaseTestCase
         $this->container = new Container();
 
         $this->container->onResolving(function (Entry $entry) {
-            $this->countResolving[$entry->class] ??= 0;
-            ++$this->countResolving[$entry->class];
+            $this->countResolving[$entry->id] ??= 0;
+            ++$this->countResolving[$entry->id];
         });
 
         $this->container->onResolved(function (Entry $entry) {
-            $this->countResolved[$entry->class] ??= 0;
-            ++$this->countResolved[$entry->class];
+            $this->countResolved[$entry->id] ??= 0;
+            ++$this->countResolved[$entry->id];
         });
     }
 

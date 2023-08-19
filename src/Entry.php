@@ -6,36 +6,33 @@ use Closure;
 use Kirameki\Core\Exceptions\LogicException;
 use function is_a;
 
-/**
- * @template-covariant TEntry of object
- */
 class Entry
 {
     /** @var Lifetime */
     public Lifetime $lifetime = Lifetime::Transient;
 
-    /** @var Closure(Container, array<array-key, mixed>): TEntry|null */
+    /** @var Closure(Container, array<array-key, mixed>): object|null */
     protected ?Closure $resolver = null;
 
-    /** @var array<int, Closure(TEntry, Container, array<array-key, mixed>): TEntry> */
+    /** @var array<int, Closure(object, Container, array<array-key, mixed>): object> */
     protected array $extenders = [];
 
-    /** @var TEntry|null */
+    /** @var object|null */
     protected mixed $cached = null;
 
     /**
      * @param Container $container
-     * @param class-string<TEntry> $class
+     * @param string $id
      */
     public function __construct(
         protected readonly Container $container,
-        public readonly string $class,
+        public readonly string $id,
     )
     {
     }
 
     /**
-     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @param Closure(Container, array<array-key, mixed>): object $resolver
      * @param Lifetime $lifetime
      * @return void
      */
@@ -47,7 +44,7 @@ class Entry
 
     /**
      * @param array<array-key, mixed> $args
-     * @return TEntry
+     * @return object
      */
     public function getInstance(array $args = []): object
     {
@@ -65,12 +62,12 @@ class Entry
 
     /**
      * @param array<array-key, mixed> $args
-     * @return TEntry
+     * @return object
      */
     protected function resolve(array $args): object
     {
         if ($this->resolver === null) {
-            throw new LogicException("{$this->class} is not registered.", [
+            throw new LogicException("{$this->id} is not registered.", [
                 'this' => $this,
             ]);
         }
@@ -87,6 +84,7 @@ class Entry
     }
 
     /**
+     * @template TEntry of object
      * @param Closure(TEntry, Container, array<array-key, mixed>): TEntry $extender
      * @return void
      */
@@ -130,8 +128,8 @@ class Entry
      */
     protected function assertInherited(mixed $instance): void
     {
-        if (!is_a($instance, $this->class)) {
-            throw new LogicException('Instance of ' . $this->class . ' expected. ' . $instance::class . ' given.');
+        if (!is_a($instance, $this->id)) {
+            throw new LogicException('Instance of ' . $this->id . ' expected. ' . $instance::class . ' given.');
         }
     }
 }

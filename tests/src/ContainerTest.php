@@ -159,7 +159,7 @@ class ContainerTest extends TestCase
     public function test_resolving(): void
     {
         $this->container->onResolving(static function(Entry $entry) {
-            self::assertSame(DateTime::class, $entry->class);
+            self::assertSame(DateTime::class, $entry->id);
         });
 
         $this->container->singleton(DateTime::class, fn() => new DateTime());
@@ -171,7 +171,7 @@ class ContainerTest extends TestCase
         $now = new DateTime();
 
         $this->container->onResolved(static function(Entry $entry) use ($now): void {
-            self::assertSame(DateTime::class, $entry->class);
+            self::assertSame(DateTime::class, $entry->id);
             self::assertSame($now, $entry->getInstance());
         });
 
