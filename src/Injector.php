@@ -187,7 +187,7 @@ class Injector
         }
 
         $paramClass = $this->revealClass($declaredClass, $type->getName());
-        return $this->container->make($paramClass);
+        return $this->container->resolve($paramClass);
     }
 
     /**

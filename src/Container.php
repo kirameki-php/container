@@ -32,7 +32,7 @@ class Container
     }
 
     /**
-     * Resolve given class.
+     * Get a given class from the container.
      *
      * Resolving and Resolved callbacks are invoked on resolution.
      * For singleton entries, callbacks are only invoked once.
@@ -41,9 +41,10 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry> $class
+     * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function get(string $class): mixed
+    public function get(string $class, array $args = []): mixed
     {
         $entry = $this->getEntry($class);
         $invokeCallbacks = !$entry->isCached();
@@ -54,7 +55,7 @@ class Container
             }
         }
 
-        $instance =  $entry->getInstance();
+        $instance =  $entry->getInstance($args);
 
         if ($invokeCallbacks) {
             foreach ($this->resolvedCallbacks as $callback) {
@@ -66,9 +67,76 @@ class Container
     }
 
     /**
-     * Check to see if a given class is registered.
+     * Register a given class.
      *
-     * Returns **true** if class exists, **false** otherwise.
+     * Returns itself for chaining.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @param Lifetime $lifetime
+     * @return $this
+     */
+    public function set(string $class, Closure $resolver, Lifetime $lifetime = Lifetime::Transient): static
+    {
+        $this->setEntry($class)->setResolver($resolver, $lifetime);
+        return $this;
+    }
+
+    /**
+     * Register a given class with scoped lifetime.
+     *
+     * Returns itself for chaining.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @return $this
+     */
+    public function scoped(string $class, Closure $resolver): static
+    {
+        $this->scopedEntries[$class] = null;
+        return $this->set($class, $resolver, Lifetime::Scoped);
+    }
+
+    /**
+     * Register a given class as a singleton.
+     *
+     * Singletons will cache the result upon resolution.
+     *
+     * Returns itself for chaining.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @return $this
+     */
+    public function singleton(string $class, Closure $resolver): static
+    {
+        return $this->set($class, $resolver, Lifetime::Singleton);
+    }
+
+    /**
+     * Delete a given entry.
+     *
+     * Returns **true** if entry is found, **false** otherwise.
+     *
+     * @param class-string $class
+     * @return bool
+     */
+    public function unset(string $class): bool
+    {
+        if ($this->has($class)) {
+            unset($this->entries[$class], $this->scopedEntries[$class]);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check to see if a given class is bound to the container.
+     *
+     * Returns **true** if bound, **false** otherwise.
      *
      * @param class-string $class
      * @return bool
@@ -84,71 +152,6 @@ class Container
     }
 
     /**
-     * Register a given class.
-     *
-     * Returns itself for chaining.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param Closure(Container): TEntry $resolver
-     * @return $this
-     */
-    public function bind(string $class, Closure $resolver): static
-    {
-        return $this->setEntry($class, $resolver, Lifetime::Transient);
-    }
-
-    /**
-     * Register a given class with scoped lifetime.
-     *
-     * Returns itself for chaining.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param Closure(Container): TEntry $resolver
-     * @return $this
-     */
-    public function scoped(string $class, Closure $resolver): static
-    {
-        $this->scopedEntries[$class] = null;
-        return $this->setEntry($class, $resolver, Lifetime::Scoped);
-    }
-
-    /**
-     * Register a given class as a singleton.
-     *
-     * Singletons will cache the result upon resolution.
-     *
-     * Returns itself for chaining.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param Closure(Container): TEntry $resolver
-     * @return $this
-     */
-    public function singleton(string $class, Closure $resolver): static
-    {
-        return $this->setEntry($class, $resolver, Lifetime::Singleton);
-    }
-
-    /**
-     * Delete a given entry.
-     *
-     * Returns **true** if entry is found, **false** otherwise.
-     *
-     * @param class-string $class
-     * @return bool
-     */
-    public function delete(string $class): bool
-    {
-        if ($this->has($class)) {
-            unset($this->entries[$class], $this->scopedEntries[$class]);
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Clears all entries.
      *
      * @return $this
@@ -161,6 +164,8 @@ class Container
     }
 
     /**
+     * Clears all scope for a scoped entry.
+     *
      * @return $this
      */
     public function clearScopedEntries(): static
@@ -173,18 +178,20 @@ class Container
     }
 
     /**
-     * Extend a registered class.
+     * Extend a bound class.
      *
      * The given Closure must return an instance of the original class or else Exception is thrown.
      *
      * @template TEntry of object
      * @param class-string<TEntry> $class
-     * @param Closure(TEntry, Container): TEntry $resolver
+     * @param Closure(TEntry, Container, array<array-key, mixed>): TEntry $extender
      * @return $this
      */
-    public function extend(string $class, Closure $resolver): static
+    public function extend(string $class, Closure $extender): static
     {
-        $this->getEntry($class)->extend($resolver);
+        array_key_exists($class, $this->entries)
+            ? $this->getEntry($class)->extend($extender)
+            : $this->setEntry($class)->extend($extender);
         return $this;
     }
 
@@ -207,21 +214,17 @@ class Container
     /**
      * @template TEntry of object
      * @param class-string<TEntry> $class
-     * @param Closure(Container): TEntry $resolver
-     * @param Lifetime $lifetime
-     * @return $this
+     * @return Entry<TEntry>
      */
-    protected function setEntry(string $class, Closure $resolver, Lifetime $lifetime): static
+    protected function setEntry(string $class): Entry
     {
         if ($this->has($class)) {
             throw new LogicException("Cannot register class: {$class}. Entry already exists.", [
                 'class' => $class,
             ]);
         }
-        $this->entries[$class] ??= new Entry($this, $class);
-        $this->entries[$class]->setResolver($resolver, $lifetime);
-
-        return $this;
+        /** @var Entry<TEntry> */
+        return $this->entries[$class] ??= new Entry($this, $class);
     }
 
     /**
@@ -229,25 +232,34 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry> $class
-     * @param mixed ...$args
+     * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function make(string $class, mixed ...$args): object
+    public function resolve(string $class, array $args = []): object
     {
-        if (count($args) === 0 && $this->has($class)) {
-            return $this->get($class);
-        }
+        return $this->has($class)
+            ? $this->get($class, $args)
+            : $this->make($class, $args);
+    }
 
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @param array<array-key, mixed> $args
+     * @return TEntry
+     */
+    public function make(string $class, array $args = []): object
+    {
         return $this->injector->constructorInjection($class, $args);
     }
 
     /**
      * @template TResult
      * @param Closure(): TResult $closure
-     * @param mixed ...$args
+     * @param array<array-key, mixed> $args
      * @return TResult
      */
-    public function call(Closure $closure, mixed ...$args): mixed
+    public function call(Closure $closure, mixed $args): mixed
     {
         return $this->injector->closureInjection($closure, $args);
     }
