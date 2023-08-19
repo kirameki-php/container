@@ -73,7 +73,7 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param ($id is class-string<TEntry> ? (Closure(Container, array<array-key, mixed>): TEntry) : (Closure(Container, array<array-key, mixed>): object)) $resolver
+     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
      * @param Lifetime $lifetime
      * @return void
      */
@@ -89,7 +89,7 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param ($id is class-string<TEntry> ? (Closure(Container, array<array-key, mixed>): TEntry) : (Closure(Container, array<array-key, mixed>): object)) $resolver
+     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
      * @return void
      */
     public function scoped(string $id, Closure $resolver): void
@@ -107,7 +107,7 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param ($id is class-string<TEntry> ? (Closure(Container, array<array-key, mixed>): TEntry) : (Closure(Container, array<array-key, mixed>): object)) $resolver
+     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
      * @return void
      */
     public function singleton(string $id, Closure $resolver): void

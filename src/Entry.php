@@ -14,7 +14,7 @@ class Entry
     /** @var Closure(Container, array<array-key, mixed>): object|null */
     protected ?Closure $resolver = null;
 
-    /** @var array<int, Closure(object, Container, array<array-key, mixed>): object> */
+    /** @var list<Closure(mixed, Container, array<array-key, mixed>): mixed> */
     protected array $extenders = [];
 
     /** @var object|null */
