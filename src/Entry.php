@@ -54,7 +54,7 @@ class Entry
 
         $instance = $this->instance ?? $this->resolve($args);
 
-        if ($this->lifetime === Lifetime::Singleton) {
+        if ($this->lifetime !== Lifetime::Transient) {
             $this->setInstance($instance);
         }
 

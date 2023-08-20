@@ -14,7 +14,7 @@ class Container
     /** @var array<string, Entry> */
     protected array $entries = [];
 
-    /** @var array<string, null> */
+    /** @var array<string, Entry> */
     protected array $scopedEntries = [];
 
     /** @var list<Closure(Entry): mixed> */
@@ -79,7 +79,9 @@ class Container
      */
     public function set(string $id, Closure $resolver, Lifetime $lifetime = Lifetime::Transient): void
     {
-        $this->setEntry($id)->setResolver($resolver, $lifetime);
+        $entry = $this->setEntry($id);
+        $entry->setResolver($resolver, $lifetime);
+        $this->scopedEntries[$id] = $entry;
     }
 
     /**
@@ -94,7 +96,6 @@ class Container
      */
     public function scoped(string $id, Closure $resolver): void
     {
-        $this->scopedEntries[$id] = null;
         $this->set($id, $resolver, Lifetime::Scoped);
     }
 
@@ -171,12 +172,11 @@ class Container
      *
      * @return $this
      */
-    public function clearScopedEntries(): static
+    public function resetScopedEntries(): static
     {
-        foreach (array_keys($this->scopedEntries) as $id) {
-            unset($this->entries[$id]);
+        foreach ($this->scopedEntries as $entry) {
+            $entry->unsetInstance();
         }
-        $this->scopedEntries = [];
         return $this;
     }
 
