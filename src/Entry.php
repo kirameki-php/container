@@ -4,35 +4,33 @@ namespace Kirameki\Container;
 
 use Closure;
 use Kirameki\Container\Exceptions\InvalidInstanceException;
+use Kirameki\Container\Exceptions\ResolverAlreadySetException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use function is_a;
 
 class Entry
 {
-    /** @var Lifetime */
-    protected Lifetime $lifetime = Lifetime::Undefined;
-
-    /** @var Closure(Container): object|null */
-    protected ?Closure $resolver = null;
-
-    /** @var list<Closure(mixed, Container): mixed> */
-    protected array $extenders = [];
-
-    /** @var object|null */
-    protected mixed $instance = null;
-
     /**
      * @param Container $container
      * @param string $id
+     * @param Closure(Container): object|null $resolver
+     * @param Lifetime $lifetime
+     * @param list<Closure(mixed, Container): mixed> $extenders
+     * @param object|null $instance
      */
     public function __construct(
         protected readonly Container $container,
         public readonly string $id,
+        protected ?Closure $resolver = null,
+        protected Lifetime $lifetime = Lifetime::Undefined,
+        protected array $extenders = [],
+        protected ?object $instance = null,
     )
     {
     }
 
     /**
+     * @internal
      * @param Closure(Container): object $resolver
      * @param Lifetime $lifetime
      * @return void
@@ -97,6 +95,14 @@ class Entry
         if ($instance !== null) {
             $this->instance = $this->applyExtender($instance, $extender);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getTags(): array
+    {
+        return $this->container->tags->getById($this->id);
     }
 
     /**

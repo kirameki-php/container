@@ -11,13 +11,13 @@ use function array_key_exists;
 class Container implements ContainerInterface
 {
     /** @var Injector */
-    protected Injector $injector;
+    protected readonly Injector $injector;
 
     /** @var array<string, Entry> */
     protected array $entries = [];
 
-    /** @var array<string, Entry> */
-    protected array $scopedEntries = [];
+    /** @var Tags */
+    public readonly Tags $tags;
 
     /** @var list<Closure(Entry): mixed> */
     protected array $resolvingCallbacks = [];
@@ -31,6 +31,7 @@ class Container implements ContainerInterface
     public function __construct(?Injector $injector = null)
     {
         $this->injector = $injector ?? new Injector($this);
+        $this->tags = new Tags();
     }
 
     /**
@@ -80,25 +81,6 @@ class Container implements ContainerInterface
     {
         $entry = $this->setEntry($id);
         $entry->setResolver($resolver, $lifetime);
-
-        if ($lifetime === Lifetime::Scoped) {
-            $this->scopedEntries[$id] = $entry;
-        }
-    }
-
-    /**
-     * Register a given class with scoped lifetime.
-     *
-     * Returns itself for chaining.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @param Closure(Container): TEntry $resolver
-     * @return void
-     */
-    public function scoped(string $id, Closure $resolver): void
-    {
-        $this->set($id, $resolver, Lifetime::Scoped);
     }
 
     /**
@@ -129,7 +111,8 @@ class Container implements ContainerInterface
     public function unset(string $id): bool
     {
         if ($this->has($id)) {
-            unset($this->entries[$id], $this->scopedEntries[$id]);
+            $this->tags->deleteId($id);
+            unset($this->entries[$id]);
             return true;
         }
         return false;
@@ -146,19 +129,6 @@ class Container implements ContainerInterface
     public function has(string $id): bool
     {
         return array_key_exists($id, $this->entries) && $this->entries[$id]->isResolvable();
-    }
-
-    /**
-     * Clears all scope for a scoped entry.
-     *
-     * @return $this
-     */
-    public function resetScopedEntries(): static
-    {
-        foreach ($this->scopedEntries as $entry) {
-            $entry->unsetInstance();
-        }
-        return $this;
     }
 
     /**
