@@ -9,8 +9,8 @@ use function is_a;
 
 class Entry
 {
-    /** @var Lifetime|null */
-    protected ?Lifetime $lifetime = null;
+    /** @var Lifetime */
+    protected Lifetime $lifetime = Lifetime::Undefined;
 
     /** @var Closure(Container, array<array-key, mixed>): object|null */
     protected ?Closure $resolver = null;
@@ -152,9 +152,9 @@ class Entry
     }
 
     /**
-     * @return Lifetime|null
+     * @return Lifetime
      */
-    public function getLifetime(): ?Lifetime
+    public function getLifetime(): Lifetime
     {
         return $this->lifetime;
     }

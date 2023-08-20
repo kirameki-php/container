@@ -18,7 +18,7 @@ use function is_a;
 class Injector
 {
     public function __construct(
-        protected Container $container,
+        protected readonly Container $container,
     )
     {
     }

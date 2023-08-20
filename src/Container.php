@@ -148,27 +148,6 @@ class Container
     }
 
     /**
-     * @param string $id
-     * @return bool
-     */
-    public function isCached(string $id): bool
-    {
-        return array_key_exists($id, $this->entries) && $this->entries[$id]->isCached();
-    }
-
-    /**
-     * Clears all entries.
-     *
-     * @return $this
-     */
-    public function clearEntries(): static
-    {
-        $this->entries = [];
-        $this->scopedEntries = [];
-        return $this;
-    }
-
-    /**
      * Clears all scope for a scoped entry.
      *
      * @return $this
@@ -201,7 +180,7 @@ class Container
     /**
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? Closure(array<array-key, mixed>=): TEntry : Closure(array<array-key, mixed>=): object)
+     * @return ($id is class-string<TEntry> ? Closure(array<array-key, mixed>): TEntry : Closure(array<array-key, mixed>): object)
      */
     public function factory(string $id): Closure
     {
@@ -219,7 +198,6 @@ class Container
                 'class' => $id,
             ]);
         }
-
         return $this->entries[$id];
     }
 
@@ -229,13 +207,13 @@ class Container
      */
     protected function setEntry(string $id): Entry
     {
-        if ($this->has($id)) {
+        if (array_key_exists($id, $this->entries)) {
             throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
                 'class' => $id,
                 'existingEntry' => $this->entries[$id],
             ]);
         }
-        return $this->entries[$id] ??= new Entry($this, $id);
+        return $this->entries[$id] = new Entry($this, $id);
     }
 
     /**
