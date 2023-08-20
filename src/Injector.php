@@ -46,13 +46,15 @@ class Injector
         $this->checkForCircularReference($class);
         $this->processingClass[$class] = null;
 
-        $params = $reflection->getConstructor()?->getParameters() ?? [];
-        $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
-        foreach ($this->getInjectingArguments($reflection, $params) as $name => $arg) {
-            $args[$name] = $arg;
+        try {
+            $params = $reflection->getConstructor()?->getParameters() ?? [];
+            $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
+            foreach ($this->getInjectingArguments($reflection, $params) as $name => $arg) {
+                $args[$name] = $arg;
+            }
+        } finally {
+            unset($this->processingClass[$class]);
         }
-
-        unset($this->processingClass[$class]);
 
         /** @var TEntry */
         return $reflection->newInstance(...$args);
