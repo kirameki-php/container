@@ -68,7 +68,7 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Register a given id .
+     * Register a given id.
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
@@ -80,7 +80,10 @@ class Container implements ContainerInterface
     {
         $entry = $this->setEntry($id);
         $entry->setResolver($resolver, $lifetime);
-        $this->scopedEntries[$id] = $entry;
+
+        if ($lifetime === Lifetime::Scoped) {
+            $this->scopedEntries[$id] = $entry;
+        }
     }
 
     /**
