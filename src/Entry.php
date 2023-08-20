@@ -12,6 +12,7 @@ class Entry
 {
     /**
      * @param Container $container
+     * @param Tags $tags
      * @param string $id
      * @param Closure(Container): object|null $resolver
      * @param Lifetime $lifetime
@@ -20,6 +21,7 @@ class Entry
      */
     public function __construct(
         protected readonly Container $container,
+        protected readonly Tags $tags,
         public readonly string $id,
         protected ?Closure $resolver = null,
         protected Lifetime $lifetime = Lifetime::Undefined,
@@ -48,7 +50,7 @@ class Entry
     {
         $instance = $this->instance ?? $this->resolve();
 
-        if ($this->lifetime !== Lifetime::Transient) {
+        if ($this->lifetime === Lifetime::Singleton) {
             $this->setInstance($instance);
         }
 
@@ -102,7 +104,7 @@ class Entry
      */
     public function getTags(): array
     {
-        return $this->container->tags->getById($this->id);
+        return $this->tags->getById($this->id);
     }
 
     /**

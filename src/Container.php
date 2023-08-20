@@ -17,7 +17,7 @@ class Container implements ContainerInterface
     protected array $entries = [];
 
     /** @var Tags */
-    public readonly Tags $tags;
+    protected readonly Tags $tags;
 
     /** @var list<Closure(Entry): mixed> */
     protected array $resolvingCallbacks = [];
@@ -184,7 +184,7 @@ class Container implements ContainerInterface
                 'existingEntry' => $this->entries[$id],
             ]);
         }
-        return $this->entries[$id] = new Entry($this, $id);
+        return $this->entries[$id] = new Entry($this, $this->tags, $id);
     }
 
     /**
