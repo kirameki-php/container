@@ -4,7 +4,6 @@ namespace Kirameki\Container;
 
 use Closure;
 use Kirameki\Container\Exceptions\InvalidInstanceException;
-use Kirameki\Container\Exceptions\ResolverAlreadySetException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use function is_a;
 
