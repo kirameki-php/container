@@ -224,7 +224,7 @@ class Container implements ContainerInterface
      */
     public function resolve(string $id, array $args = []): object
     {
-        return $this->has($id)
+        return $this->has($id) && $args === []
             ? $this->get($id)
             : $this->make($id, $args);
     }
