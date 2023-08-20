@@ -187,14 +187,13 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param Closure(TEntry, Container, array<array-key, mixed>): TEntry $extender
+     * @param Closure(TEntry, Container): TEntry $extender
      * @return $this
      */
     public function extend(string $id, Closure $extender): static
     {
-        array_key_exists($id, $this->entries)
-            ? $this->getEntry($id)->extend($extender)
-            : $this->setEntry($id)->extend($extender);
+        $entry = $this->entries[$id] ?? $this->setEntry($id);
+        $entry->extend($extender);
         return $this;
     }
 
@@ -202,13 +201,14 @@ class Container
      * @param string $id
      * @return Entry
      */
-    protected function getEntry(string $id): Entry
+    public function getEntry(string $id): Entry
     {
         if (!array_key_exists($id, $this->entries)) {
             throw new LogicException("{$id} is not registered.", [
                 'class' => $id,
             ]);
         }
+
         return $this->entries[$id];
     }
 

@@ -8,17 +8,17 @@ use function is_a;
 
 class Entry
 {
-    /** @var Lifetime */
-    public Lifetime $lifetime = Lifetime::Transient;
+    /** @var Lifetime|null */
+    protected ?Lifetime $lifetime = null;
 
     /** @var Closure(Container, array<array-key, mixed>): object|null */
     protected ?Closure $resolver = null;
 
-    /** @var list<Closure(mixed, Container, array<array-key, mixed>): mixed> */
+    /** @var list<Closure(mixed, Container): mixed> */
     protected array $extenders = [];
 
     /** @var object|null */
-    protected mixed $cached = null;
+    protected mixed $instance = null;
 
     /**
      * @param Container $container
@@ -48,16 +48,59 @@ class Entry
      */
     public function getInstance(array $args = []): object
     {
-        $instance = $this->cached;
+        if ($args !== []) {
+            return $this->resolve($args);
+        }
 
-        if ($instance === null || $args !== []) {
-            $instance = $this->resolve($args);
-            if ($this->lifetime === Lifetime::Singleton) {
-                $this->cached = $instance;
-            }
+        $instance = $this->instance ?? $this->resolve($args);
+
+        if ($this->lifetime === Lifetime::Singleton) {
+            $this->setInstance($instance);
         }
 
         return $instance;
+    }
+
+    /**
+     * @param object $instance
+     * @return void
+     */
+    protected function setInstance(object $instance): void
+    {
+        $this->instance = $instance;
+    }
+
+    /**
+     * Unset the instance if it exists.
+     * Returns **true** if the instance existed and was unset, **false** otherwise.
+     *
+     * @return bool
+     */
+    public function unsetInstance(): bool
+    {
+        if ($this->instance !== null) {
+            $this->instance = null;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Extender will be executed immediately if the instance already exists.
+     *
+     * @template TEntry of object
+     * @param Closure(TEntry, Container): TEntry $extender
+     * @return void
+     */
+    public function extend(Closure $extender): void
+    {
+        $this->extenders[] = $extender;
+
+        /** @var TEntry $instance */
+        $instance = $this->instance;
+        if ($instance !== null) {
+            $this->instance = $this->applyExtender($instance, $extender);
+        }
     }
 
     /**
@@ -67,7 +110,7 @@ class Entry
     protected function resolve(array $args): object
     {
         if ($this->resolver === null) {
-            throw new LogicException("{$this->id} is not registered.", [
+            throw new LogicException("Resolver for {$this->id} is not set.", [
                 'this' => $this,
             ]);
         }
@@ -76,25 +119,10 @@ class Entry
         $this->assertInherited($instance);
 
         foreach ($this->extenders as $extender) {
-            $instance = $extender($instance, $this->container, $args);
-            $this->assertInherited($instance);
+            $instance = $this->applyExtender($instance, $extender);
         }
 
         return $instance;
-    }
-
-    /**
-     * @template TEntry of object
-     * @param Closure(TEntry, Container, array<array-key, mixed>): TEntry $extender
-     * @return void
-     */
-    public function extend(Closure $extender): void
-    {
-        $this->extenders[] = $extender;
-
-        if ($this->isCached()) {
-            $this->reset();
-        }
     }
 
     /**
@@ -108,18 +136,38 @@ class Entry
     /**
      * @return bool
      */
-    public function isCached(): bool
+    public function isExtended(): bool
     {
-        return $this->cached !== null;
+        return $this->extenders !== [];
     }
 
     /**
-     * @return $this
+     * @return bool
      */
-    public function reset(): static
+    public function isCached(): bool
     {
-        $this->cached = null;
-        return $this;
+        return $this->instance !== null;
+    }
+
+    /**
+     * @return Lifetime|null
+     */
+    public function getLifetime(): ?Lifetime
+    {
+        return $this->lifetime;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param TEntry $instance
+     * @param Closure(TEntry, Container): TEntry $extender
+     * @return TEntry
+     */
+    protected function applyExtender(object $instance, Closure $extender): object
+    {
+        $instance = $extender($instance, $this->container);
+        $this->assertInherited($instance);
+        return $instance;
     }
 
     /**
