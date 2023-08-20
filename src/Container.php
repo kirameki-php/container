@@ -3,7 +3,8 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Core\Exceptions\LogicException;
+use Kirameki\Container\Exceptions\DuplicateEntryException;
+use Kirameki\Container\Exceptions\EntryNotFoundException;
 use function array_key_exists;
 
 class Container
@@ -198,13 +199,23 @@ class Container
     }
 
     /**
+     * @template TEntry of object
+     * @param class-string<TEntry>|string $id
+     * @return ($id is class-string<TEntry> ? Closure(array<array-key, mixed>=): TEntry : Closure(array<array-key, mixed>=): object)
+     */
+    public function factory(string $id): Closure
+    {
+        return fn (array $args = []) => $this->get($id, $args);
+    }
+
+    /**
      * @param string $id
      * @return Entry
      */
     public function getEntry(string $id): Entry
     {
         if (!array_key_exists($id, $this->entries)) {
-            throw new LogicException("{$id} is not registered.", [
+            throw new EntryNotFoundException("{$id} is not registered.", [
                 'class' => $id,
             ]);
         }
@@ -219,8 +230,9 @@ class Container
     protected function setEntry(string $id): Entry
     {
         if ($this->has($id)) {
-            throw new LogicException("Cannot register class: {$id}. Entry already exists.", [
+            throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
                 'class' => $id,
+                'existingEntry' => $this->entries[$id],
             ]);
         }
         return $this->entries[$id] ??= new Entry($this, $id);

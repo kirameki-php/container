@@ -3,7 +3,7 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Core\Exceptions\LogicException;
+use Kirameki\Container\Exceptions\InjectionException;
 use ReflectionClass;
 use ReflectionFunction;
 use ReflectionIntersectionType;
@@ -97,7 +97,7 @@ class Injector
                     $isVariadic |= $params[$key]->isVariadic();
                     unset($params[$key]);
                 } elseif (!$isVariadic) {
-                    throw new LogicException("Argument with position: {$key} does not exist for class: {$class?->name}.", [
+                    throw new InjectionException("Argument with position: {$key} does not exist for class: {$class?->name}.", [
                         'class' => $class,
                         'params' => $params,
                         'args' => $args,
@@ -114,7 +114,7 @@ class Injector
                 if (array_key_exists($key, $paramsMap)) {
                     unset($params[$paramsMap[$key]->getPosition()]);
                 } else {
-                    throw new LogicException("Argument with name: {$key} does not exist for class: {$class?->name}.", [
+                    throw new InjectionException("Argument with name: {$key} does not exist for class: {$class?->name}.", [
                         'class' => $class,
                         'params' => $params,
                         'args' => $args,
@@ -162,7 +162,7 @@ class Injector
 
             $className = $declaredClass?->name ?? 'Non-Class';
             $paramName = $param->name;
-            throw new LogicException("[{$className}] Argument: \${$paramName} must be a class or have a default value.", [
+            throw new InjectionException("[{$className}] Argument: \${$paramName} must be a class or have a default value.", [
                 'declaredClass' => $declaredClass,
                 'param' => $param,
             ]);
@@ -182,7 +182,7 @@ class Injector
                 $type instanceof ReflectionNamedType && $type->isBuiltin() => 'Built-in types',
                 default => 'Unknown type',
             };
-            throw new LogicException("[{$className}] Invalid type on argument: {$typeName} \${$paramName}. {$typeCategory} are not allowed.", [
+            throw new InjectionException("[{$className}] Invalid type on argument: {$typeName} \${$paramName}. {$typeCategory} are not allowed.", [
                 'declaredClass' => $declaredClass,
                 'param' => $param,
             ]);
@@ -230,7 +230,7 @@ class Injector
         }
 
         $path = implode(' -> ', [...array_keys($this->processingClass), $class]);
-        throw new LogicException('Circular Dependency detected! ' . $path, [
+        throw new InjectionException('Circular Dependency detected! ' . $path, [
             'path' => $path,
             'class' => $class,
         ]);

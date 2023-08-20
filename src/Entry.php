@@ -3,7 +3,8 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Core\Exceptions\LogicException;
+use Kirameki\Container\Exceptions\InvalidInstanceException;
+use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use function is_a;
 
 class Entry
@@ -110,8 +111,9 @@ class Entry
     protected function resolve(array $args): object
     {
         if ($this->resolver === null) {
-            throw new LogicException("Resolver for {$this->id} is not set.", [
+            throw new ResolverNotFoundException("{$this->id} is not set.", [
                 'this' => $this,
+                'args' => $args,
             ]);
         }
 
@@ -177,7 +179,10 @@ class Entry
     protected function assertInherited(mixed $instance): void
     {
         if (!is_a($instance, $this->id)) {
-            throw new LogicException('Instance of ' . $this->id . ' expected. ' . $instance::class . ' given.');
+            throw new InvalidInstanceException("Expected: Instance of {$this->id} " . $instance::class . ' given.', [
+                'this' => $this,
+                'instance' => $instance,
+            ]);
         }
     }
 }
