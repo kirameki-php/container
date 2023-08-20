@@ -5,11 +5,12 @@
   "license": "MIT",
   "require": {
     "php": ">= 8.2",
-    "kirameki/core": "dev-main"
+    "kirameki/core": "dev-main",
+    "psr/container": "^2.0.2"
   },
   "require-dev": {
-    "phpstan/phpstan": "^1.10",
-    "phpunit/phpunit": "~10.0",
+    "phpstan/phpstan": "^1.10.29",
+    "phpunit/phpunit": "^10.3.2",
     "kirameki/dumper": "dev-main"
   },
   "autoload": {

@@ -12,7 +12,7 @@ class Entry
     /** @var Lifetime */
     protected Lifetime $lifetime = Lifetime::Undefined;
 
-    /** @var Closure(Container, array<array-key, mixed>): object|null */
+    /** @var Closure(Container): object|null */
     protected ?Closure $resolver = null;
 
     /** @var list<Closure(mixed, Container): mixed> */
@@ -33,7 +33,7 @@ class Entry
     }
 
     /**
-     * @param Closure(Container, array<array-key, mixed>): object $resolver
+     * @param Closure(Container): object $resolver
      * @param Lifetime $lifetime
      * @return void
      */
@@ -44,16 +44,11 @@ class Entry
     }
 
     /**
-     * @param array<array-key, mixed> $args
      * @return object
      */
-    public function getInstance(array $args = []): object
+    public function getInstance(): object
     {
-        if ($args !== []) {
-            return $this->resolve($args);
-        }
-
-        $instance = $this->instance ?? $this->resolve($args);
+        $instance = $this->instance ?? $this->resolve();
 
         if ($this->lifetime !== Lifetime::Transient) {
             $this->setInstance($instance);
@@ -105,19 +100,17 @@ class Entry
     }
 
     /**
-     * @param array<array-key, mixed> $args
      * @return object
      */
-    protected function resolve(array $args): object
+    protected function resolve(): object
     {
         if ($this->resolver === null) {
             throw new ResolverNotFoundException("{$this->id} is not set.", [
                 'this' => $this,
-                'args' => $args,
             ]);
         }
 
-        $instance = ($this->resolver)($this->container, $args);
+        $instance = ($this->resolver)($this->container);
         $this->assertInherited($instance);
 
         foreach ($this->extenders as $extender) {

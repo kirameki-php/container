@@ -5,9 +5,10 @@ namespace Kirameki\Container;
 use Closure;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
+use Psr\Container\ContainerInterface;
 use function array_key_exists;
 
-class Container
+class Container implements ContainerInterface
 {
     /** @var Injector */
     protected Injector $injector;
@@ -42,10 +43,9 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param array<array-key, mixed> $args
      * @return ($id is class-string<TEntry> ? TEntry : object)
      */
-    public function get(string $id, array $args = []): mixed
+    public function get(string $id): mixed
     {
         $entry = $this->getEntry($id);
         $invokeCallbacks = !$entry->isCached();
@@ -56,7 +56,7 @@ class Container
             }
         }
 
-        $instance =  $entry->getInstance($args);
+        $instance =  $entry->getInstance();
 
         if ($invokeCallbacks) {
             foreach ($this->resolvedCallbacks as $callback) {
@@ -68,13 +68,11 @@ class Container
     }
 
     /**
-     * Register a given class.
-     *
-     * Returns itself for chaining.
+     * Register a given id .
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @param Closure(Container): TEntry $resolver
      * @param Lifetime $lifetime
      * @return void
      */
@@ -92,7 +90,7 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @param Closure(Container): TEntry $resolver
      * @return void
      */
     public function scoped(string $id, Closure $resolver): void
@@ -109,7 +107,7 @@ class Container
      *
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @param Closure(Container, array<array-key, mixed>): TEntry $resolver
+     * @param Closure(Container): TEntry $resolver
      * @return void
      */
     public function singleton(string $id, Closure $resolver): void
@@ -180,11 +178,11 @@ class Container
     /**
      * @template TEntry of object
      * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? Closure(array<array-key, mixed>): TEntry : Closure(array<array-key, mixed>): object)
+     * @return ($id is class-string<TEntry> ? Closure(): TEntry : Closure(): object)
      */
     public function factory(string $id): Closure
     {
-        return fn (array $args = []) => $this->get($id, $args);
+        return fn () => $this->get($id);
     }
 
     /**
@@ -227,7 +225,7 @@ class Container
     public function resolve(string $id, array $args = []): object
     {
         return $this->has($id)
-            ? $this->get($id, $args)
+            ? $this->get($id)
             : $this->make($id, $args);
     }
 
