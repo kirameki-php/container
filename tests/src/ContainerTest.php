@@ -22,10 +22,6 @@ use TypeError;
 
 class ContainerTest extends TestCase
 {
-    public function abc(int $a, int $b, int $c): void
-    {
-    }
-
     public function test_resolve(): void
     {
         $now = new DateTime();
@@ -195,7 +191,7 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $basic = $this->container->resolve(Basic::class, $now, 2);
+        $basic = $this->container->resolve(Basic::class, [$now, 2]);
         self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
@@ -206,7 +202,7 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $basic = $this->container->resolve(Basic::class, d: $now, i: 2);
+        $basic = $this->container->resolve(Basic::class, ['d' => $now, 'i' => 2]);
         self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
@@ -217,28 +213,28 @@ class ContainerTest extends TestCase
     {
         $this->expectExceptionMessage(Basic::class . '::__construct(): Argument #1 ($d) must be of type DateTime, null given');
         $this->expectException(TypeError::class);
-        $this->container->resolve(Basic::class, null);
+        $this->container->resolve(Basic::class, [null]);
     }
 
     public function test_make_with_non_existing_positional_parameter(): void
     {
         $this->expectExceptionMessage('Argument with position: 1 does not exist for class: ' . Builtin::class . '.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Builtin::class, 1, 2);
+        $this->container->resolve(Builtin::class, [1, 2]);
     }
 
     public function test_make_with_non_existing_named_parameter(): void
     {
         $this->expectExceptionMessage('Argument with name: z does not exist for class: ' . Builtin::class . '.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Builtin::class, z: 1);
+        $this->container->resolve(Builtin::class, ['z' => 1]);
     }
 
     public function test_make_with_named_params_using_default_value(): void
     {
         $now = new DateTime();
 
-        $basic = $this->container->resolve(Basic::class, d: $now);
+        $basic = $this->container->resolve(Basic::class, ['d' => $now]);
 
         self::assertSame($now->getTimestamp(), $basic->d->getTimestamp());
         self::assertSame(1, $basic->i);
@@ -291,7 +287,7 @@ class ContainerTest extends TestCase
     public function test_make_variadic_with_arguments(): void
     {
         $now = new DateTime();
-        $variadic = $this->container->resolve(Variadic::class, $now, $now);
+        $variadic = $this->container->resolve(Variadic::class, [$now, $now]);
 
         self::assertSame($now, $variadic->list[0]);
         self::assertSame($now, $variadic->list[1]);
@@ -343,7 +339,7 @@ class ContainerTest extends TestCase
     {
         $this->expectExceptionMessage('[DateTimeZone] Invalid type on argument: string $timezone. Built-in types are not allowed');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Basic::class, i: 2);
+        $this->container->resolve(Basic::class, ['i' => 2]);
     }
 
     public function test_make_with_circular_dependency(): void
