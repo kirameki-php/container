@@ -13,13 +13,19 @@ use function array_key_exists;
 
 class Container implements ContainerInterface
 {
-    /** @var Injector */
+    /**
+     * @var Injector
+     */
     protected readonly Injector $injector;
 
-    /** @var array<string, Entry> */
+    /**
+     * @var array<string, Entry>
+     */
     protected array $entries = [];
 
-    /** @var Tags */
+    /**
+     * @var Tags
+     */
     protected readonly Tags $tags;
 
     /**
@@ -56,20 +62,16 @@ class Container implements ContainerInterface
     public function get(string $id): mixed
     {
         $entry = $this->getEntry($id);
-        $invokeCallbacks = !$entry->isCached();
+        $resolving = !$entry->isCached();
 
-        if($invokeCallbacks) {
-            foreach ($this->resolvingCallbacks as $callback) {
-                $callback($entry);
-            }
+        if ($resolving && $this->resolvingCallbacks?->hasListeners()) {
+            $this->resolvingCallbacks->dispatch(new Resolving($id));
         }
 
         $instance =  $entry->getInstance();
 
-        if ($invokeCallbacks) {
-            foreach ($this->resolvedCallbacks as $callback) {
-                $callback($entry, $instance);
-            }
+        if ($resolving && $this->resolvedCallbacks?->hasListeners()) {
+            $this->resolvedCallbacks->dispatch(new Resolved($id, $instance));
         }
 
         return $instance;
@@ -241,7 +243,7 @@ class Container implements ContainerInterface
      */
     public function onResolved(Closure $callback): void
     {
-        $this->resolvingCallbacks ??= new EventHandler(Resolved::class);
+        $this->resolvedCallbacks ??= new EventHandler(Resolved::class);
         $this->resolvedCallbacks->listen($callback);
     }
 }
