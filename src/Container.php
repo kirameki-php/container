@@ -3,8 +3,11 @@
 namespace Kirameki\Container;
 
 use Closure;
+use Kirameki\Container\Events\Resolved;
+use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
+use Kirameki\Core\EventHandler;
 use Psr\Container\ContainerInterface;
 use function array_key_exists;
 
@@ -19,11 +22,15 @@ class Container implements ContainerInterface
     /** @var Tags */
     protected readonly Tags $tags;
 
-    /** @var list<Closure(Entry): mixed> */
-    protected array $resolvingCallbacks = [];
+    /**
+     * @var EventHandler<Resolving>|null
+     */
+    protected ?EventHandler $resolvingCallbacks = null;
 
-    /** @var list<Closure(Entry, mixed): mixed> */
-    protected array $resolvedCallbacks = [];
+    /**
+     * @var EventHandler<Resolved>|null
+     */
+    protected ?EventHandler $resolvedCallbacks = null;
 
     /**
      * @param Injector|null $injector
@@ -149,16 +156,6 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? Closure(): TEntry : Closure(): object)
-     */
-    public function factory(string $id): Closure
-    {
-        return fn () => $this->get($id);
-    }
-
-    /**
      * @param string $id
      * @return Entry
      */
@@ -227,22 +224,24 @@ class Container implements ContainerInterface
     /**
      * Set a callback which is called when a class is resolving.
      *
-     * @param Closure(Entry): mixed $callback
+     * @param Closure(Resolving): mixed $callback
      * @return void
      */
     public function onResolving(Closure $callback): void
     {
-        $this->resolvingCallbacks[] = $callback;
+        $this->resolvingCallbacks ??= new EventHandler(Resolving::class);
+        $this->resolvingCallbacks->listen($callback);
     }
 
     /**
      * Set a callback which is called when a class is resolved.
      *
-     * @param Closure(Entry, mixed): mixed $callback
+     * @param Closure(Resolved): mixed $callback
      * @return void
      */
     public function onResolved(Closure $callback): void
     {
-        $this->resolvedCallbacks[] = $callback;
+        $this->resolvingCallbacks ??= new EventHandler(Resolved::class);
+        $this->resolvedCallbacks->listen($callback);
     }
 }
