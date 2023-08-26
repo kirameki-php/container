@@ -44,8 +44,8 @@ class ContainerTest extends TestCase
     {
         $this->container->set(DateTime::class, static fn() => new DateTime());
 
-        $basic1 = $this->container->resolve(Basic::class);
-        $basic2 = $this->container->resolve(Basic::class);
+        $basic1 = $this->container->make(Basic::class);
+        $basic2 = $this->container->make(Basic::class);
 
         self::assertNotSame($basic2->d, $basic1->d);
         $this->assertTotalResolvingCount(2);
@@ -91,8 +91,8 @@ class ContainerTest extends TestCase
     {
         $this->container->singleton(DateTime::class, static fn() => new DateTime());
 
-        $basic1 = $this->container->resolve(Basic::class);
-        $basic2 = $this->container->resolve(Basic::class);
+        $basic1 = $this->container->make(Basic::class);
+        $basic2 = $this->container->make(Basic::class);
 
         self::assertSame($basic2->d, $basic1->d);
         $this->assertTotalResolvingCount(1);
@@ -180,7 +180,7 @@ class ContainerTest extends TestCase
         $instance = new Basic(new DateTime());
         $this->container->singleton(Basic::class, fn() => $instance);
 
-        $result = $this->container->resolve(Basic::class);
+        $result = $this->container->make(Basic::class);
 
         self::assertSame($instance, $result);
         $this->assertTotalResolvingCount(1);
@@ -191,7 +191,7 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $basic = $this->container->resolve(Basic::class, [$now, 2]);
+        $basic = $this->container->make(Basic::class, [$now, 2]);
         self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
@@ -202,7 +202,7 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $basic = $this->container->resolve(Basic::class, ['d' => $now, 'i' => 2]);
+        $basic = $this->container->make(Basic::class, ['d' => $now, 'i' => 2]);
         self::assertSame($now, $basic->d);
         self::assertSame(2, $basic->i);
         $this->assertTotalResolvingCount(0);
@@ -213,28 +213,28 @@ class ContainerTest extends TestCase
     {
         $this->expectExceptionMessage(Basic::class . '::__construct(): Argument #1 ($d) must be of type DateTime, null given');
         $this->expectException(TypeError::class);
-        $this->container->resolve(Basic::class, [null]);
+        $this->container->make(Basic::class, [null]);
     }
 
     public function test_make_with_non_existing_positional_parameter(): void
     {
         $this->expectExceptionMessage('Argument with position: 1 does not exist for class: ' . Builtin::class . '.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Builtin::class, [1, 2]);
+        $this->container->make(Builtin::class, [1, 2]);
     }
 
     public function test_make_with_non_existing_named_parameter(): void
     {
         $this->expectExceptionMessage('Argument with name: z does not exist for class: ' . Builtin::class . '.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Builtin::class, ['z' => 1]);
+        $this->container->make(Builtin::class, ['z' => 1]);
     }
 
     public function test_make_with_named_params_using_default_value(): void
     {
         $now = new DateTime();
 
-        $basic = $this->container->resolve(Basic::class, ['d' => $now]);
+        $basic = $this->container->make(Basic::class, ['d' => $now]);
 
         self::assertSame($now->getTimestamp(), $basic->d->getTimestamp());
         self::assertSame(1, $basic->i);
@@ -247,7 +247,7 @@ class ContainerTest extends TestCase
         $now = new DateTime();
 
         $this->container->set(DateTime::class, static fn() => $now);
-        $basic = $this->container->resolve(Basic::class);
+        $basic = $this->container->make(Basic::class);
 
         self::assertSame($now, $basic->d);
         self::assertSame(1, $basic->i);
@@ -259,19 +259,19 @@ class ContainerTest extends TestCase
     {
         $this->expectExceptionMessage('[' . NoType::class . '] Argument: $a must be a class or have a default value.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(NoType::class);
+        $this->container->make(NoType::class);
     }
 
     public function test_make_with_no_types_but_has_default(): void
     {
-        $noType = $this->container->resolve(NoTypeDefault::class);
+        $noType = $this->container->make(NoTypeDefault::class);
 
         self::assertSame(1, $noType->a);
     }
 
     public function test_make_variadic_type(): void
     {
-        $variadic = $this->container->resolve(Variadic::class);
+        $variadic = $this->container->make(Variadic::class);
 
         self::assertEmpty($variadic->list);
     }
@@ -279,7 +279,7 @@ class ContainerTest extends TestCase
     public function test_make_variadic_with_bindings(): void
     {
         $this->container->singleton(DateTime::class, fn() => new DateTime());
-        $variadic = $this->container->resolve(Variadic::class);
+        $variadic = $this->container->make(Variadic::class);
 
         self::assertEmpty($variadic->list);
     }
@@ -287,7 +287,7 @@ class ContainerTest extends TestCase
     public function test_make_variadic_with_arguments(): void
     {
         $now = new DateTime();
-        $variadic = $this->container->resolve(Variadic::class, [$now, $now]);
+        $variadic = $this->container->make(Variadic::class, [$now, $now]);
 
         self::assertSame($now, $variadic->list[0]);
         self::assertSame($now, $variadic->list[1]);
@@ -297,40 +297,40 @@ class ContainerTest extends TestCase
     {
         $this->expectExceptionMessage('[' . Intersect::class . '] Invalid type on argument: ' . Basic::class . '&' . BasicExtended::class . ' $a. Intersection types are not allowed.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Intersect::class);
+        $this->container->make(Intersect::class);
     }
 
     public function test_make_with_builtin_type(): void
     {
         $this->expectExceptionMessage('[' . Builtin::class . '] Invalid type on argument: int $a. Built-in types are not allowed.');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Builtin::class);
+        $this->container->make(Builtin::class);
     }
 
     public function test_make_with_union_type(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('[' . Union::class . '] Invalid type on argument: ' . Basic::class . '|' . BasicExtended::class . ' $a. Union types are not allowed.');
-        $this->container->resolve(Union::class);
+        $this->container->make(Union::class);
     }
 
     public function test_make_with_self_type(): void
     {
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Circular Dependency detected! ' . SelfType::class . ' -> '  . SelfType::class);
-        $this->container->resolve(SelfType::class);
+        $this->container->make(SelfType::class);
     }
 
     public function test_make_with_parent_type(): void
     {
-        $parentType = $this->container->resolve(ParentType::class);
+        $parentType = $this->container->make(ParentType::class);
         self::assertSame(1, $parentType->a);
     }
 
     public function test_make_with_nullable_type(): void
     {
         $this->container->set(DateTime::class, fn () => new DateTime());
-        $nullable = $this->container->resolve(Nullable::class);
+        $nullable = $this->container->make(Nullable::class);
         self::assertInstanceOf(DateTime::class, $nullable->a);
 
     }
@@ -339,7 +339,7 @@ class ContainerTest extends TestCase
     {
         $this->expectExceptionMessage('[DateTimeZone] Invalid type on argument: string $timezone. Built-in types are not allowed');
         $this->expectException(LogicException::class);
-        $this->container->resolve(Basic::class, ['i' => 2]);
+        $this->container->make(Basic::class, ['i' => 2]);
     }
 
     public function test_make_with_circular_dependency(): void
@@ -349,6 +349,6 @@ class ContainerTest extends TestCase
             '%c2' => Circular2::class,
         ]));
         $this->expectException(LogicException::class);
-        $this->container->resolve(Circular1::class);
+        $this->container->make(Circular1::class);
     }
 }

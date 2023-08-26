@@ -24,6 +24,15 @@ class Tags
         return array_keys($this->idLookup[$id] ?? []);
     }
 
+    /**
+     * @param string $name
+     * @return list<string>
+     */
+    public function getByName(string $name): array
+    {
+        return array_keys($this->nameLookup[$name] ?? []);
+    }
+
     public function add(string $tag, string $id): void
     {
         $this->idLookup[$id][$tag] = true;

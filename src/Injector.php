@@ -39,7 +39,7 @@ class Injector
      * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function constructorInjection(string $class, array $args): object
+    public function instantiate(string $class, array $args): object
     {
         $reflection = new ReflectionClass($class);
 
@@ -66,7 +66,7 @@ class Injector
      * @param array<array-key, mixed> $args
      * @return TResult
      */
-    public function closureInjection(Closure $closure, array $args): mixed
+    public function invoke(Closure $closure, array $args): mixed
     {
         $reflection = new ReflectionFunction($closure);
 
@@ -189,7 +189,7 @@ class Injector
         }
 
         $paramClass = $this->revealClass($declaredClass, $type->getName());
-        return $this->container->resolve($paramClass);
+        return $this->container->make($paramClass);
     }
 
     /**

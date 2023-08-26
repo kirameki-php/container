@@ -29,6 +29,11 @@ class Container implements ContainerInterface
     protected readonly Tags $tags;
 
     /**
+     * @var array<string, ContextProvider>
+     */
+    protected array $contexts = [];
+
+    /**
      * @var EventHandler<Resolving>|null
      */
     protected ?EventHandler $resolvingCallbacks = null;
@@ -61,20 +66,7 @@ class Container implements ContainerInterface
      */
     public function get(string $id): mixed
     {
-        $entry = $this->getEntry($id);
-        $resolving = !$entry->isCached();
-
-        if ($resolving && $this->resolvingCallbacks?->hasListeners()) {
-            $this->resolvingCallbacks->dispatch(new Resolving($id));
-        }
-
-        $instance =  $entry->getInstance();
-
-        if ($resolving && $this->resolvedCallbacks?->hasListeners()) {
-            $this->resolvedCallbacks->dispatch(new Resolved($id, $instance));
-        }
-
-        return $instance;
+        return $this->getEntry($id)->getInstance();
     }
 
     /**
@@ -88,8 +80,7 @@ class Container implements ContainerInterface
      */
     public function set(string $id, Closure $resolver, Lifetime $lifetime = Lifetime::Transient): void
     {
-        $entry = $this->setEntry($id);
-        $entry->setResolver($resolver, $lifetime);
+        $this->setEntry($id)->setResolver($resolver, $lifetime);
     }
 
     /**
@@ -158,6 +149,18 @@ class Container implements ContainerInterface
     }
 
     /**
+     * @param string $name
+     * @return list<object>
+     */
+    public function getTagged(string $name): array
+    {
+        return array_map(
+            fn (string $id) => $this->get($id),
+            $this->tags->getByName($name)
+        );
+    }
+
+    /**
      * @param string $id
      * @return Entry
      */
@@ -194,11 +197,11 @@ class Container implements ContainerInterface
      * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function resolve(string $id, array $args = []): object
+    public function make(string $id, array $args = []): object
     {
         return $this->has($id) && $args === []
             ? $this->get($id)
-            : $this->make($id, $args);
+            : $this->construct($id, $args);
     }
 
     /**
@@ -207,9 +210,19 @@ class Container implements ContainerInterface
      * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function make(string $class, array $args = []): object
+    public function construct(string $class, array $args = []): object
     {
-        return $this->injector->constructorInjection($class, $args);
+        return $this->injector->instantiate($class, $args);
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $class
+     * @return ContextProvider
+     */
+    public function whenConstructing(string $class): ContextProvider
+    {
+        return $this->contexts[$class] = new ContextProvider($class);
     }
 
     /**
@@ -220,30 +233,6 @@ class Container implements ContainerInterface
      */
     public function call(Closure $closure, mixed $args): mixed
     {
-        return $this->injector->closureInjection($closure, $args);
-    }
-
-    /**
-     * Set a callback which is called when a class is resolving.
-     *
-     * @param Closure(Resolving): mixed $callback
-     * @return void
-     */
-    public function onResolving(Closure $callback): void
-    {
-        $this->resolvingCallbacks ??= new EventHandler(Resolving::class);
-        $this->resolvingCallbacks->listen($callback);
-    }
-
-    /**
-     * Set a callback which is called when a class is resolved.
-     *
-     * @param Closure(Resolved): mixed $callback
-     * @return void
-     */
-    public function onResolved(Closure $callback): void
-    {
-        $this->resolvedCallbacks ??= new EventHandler(Resolved::class);
-        $this->resolvedCallbacks->listen($callback);
+        return $this->injector->invoke($closure, $args);
     }
 }
