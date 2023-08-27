@@ -66,7 +66,20 @@ class Container implements ContainerInterface
      */
     public function get(string $id): mixed
     {
-        return $this->getEntry($id)->getInstance();
+        $entry = $this->getEntry($id);
+        $resolving = !$entry->isCached();
+
+        if ($resolving && $this->resolvingCallbacks?->hasListeners()) {
+            $this->resolvingCallbacks->dispatch(new Resolving($id));
+        }
+
+        $instance =  $entry->getInstance();
+
+        if ($resolving && $this->resolvedCallbacks?->hasListeners()) {
+            $this->resolvedCallbacks->dispatch(new Resolved($id, $instance));
+        }
+
+        return $instance;
     }
 
     /**
@@ -201,7 +214,7 @@ class Container implements ContainerInterface
     {
         return $this->has($id) && $args === []
             ? $this->get($id)
-            : $this->construct($id, $args);
+            : $this->inject($id, $args);
     }
 
     /**
@@ -210,7 +223,7 @@ class Container implements ContainerInterface
      * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function construct(string $class, array $args = []): object
+    public function inject(string $class, array $args = []): object
     {
         return $this->injector->instantiate($class, $args);
     }
@@ -220,7 +233,7 @@ class Container implements ContainerInterface
      * @param class-string<TEntry> $class
      * @return ContextProvider
      */
-    public function whenConstructing(string $class): ContextProvider
+    public function whenInjecting(string $class): ContextProvider
     {
         return $this->contexts[$class] = new ContextProvider($class);
     }
@@ -234,5 +247,29 @@ class Container implements ContainerInterface
     public function call(Closure $closure, mixed $args): mixed
     {
         return $this->injector->invoke($closure, $args);
+    }
+
+    /**
+     * Set a callback which is called when a class is resolving.
+     *
+     * @param Closure(Resolving): mixed $callback
+     * @return void
+     */
+    public function onResolving(Closure $callback): void
+    {
+        $this->resolvingCallbacks ??= new EventHandler(Resolving::class);
+        $this->resolvingCallbacks->listen($callback);
+    }
+
+    /**
+     * Set a callback which is called when a class is resolved.
+     *
+     * @param Closure(Resolved): mixed $callback
+     * @return void
+     */
+    public function onResolved(Closure $callback): void
+    {
+        $this->resolvedCallbacks ??= new EventHandler(Resolved::class);
+        $this->resolvedCallbacks->listen($callback);
     }
 }

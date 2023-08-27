@@ -3,7 +3,9 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
-use Kirameki\Container\Entry;
+use Kirameki\Container\Events\Resolved;
+use Kirameki\Container\Events\Resolving;
+use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use Kirameki\Core\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
@@ -132,20 +134,21 @@ class ContainerTest extends TestCase
         self::assertSame(1, $basic1->i);
         self::assertSame('2022-02-02', $basic2->d->format('Y-m-d'));
         self::assertSame(100, $basic2->i);
-        $this->assertTotalResolvingCount(2);
-        $this->assertTotalResolvedCount(2);
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
     }
 
     public function test_extend_nothing(): void
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('DateTime cannot be extended since it is not defined.');
+        $this->expectException(ResolverNotFoundException::class);
+        $this->expectExceptionMessage('DateTime is not set.');
         $this->container->extend(DateTime::class, fn() => new DateTime());
+        $this->container->get(DateTime::class);
     }
 
     public function test_extend_invalid_return_type(): void
     {
-        $this->expectExceptionMessage('Instance of ' . DateTime::class . ' expected. ' . NoTypeDefault::class . ' given.');
+        $this->expectExceptionMessage('Expected: instance of ' . DateTime::class . '. Got: ' . NoTypeDefault::class . '.');
         $this->expectException(LogicException::class);
         $this->container->set(DateTime::class, fn() => new DateTime());
         $this->container->extend(DateTime::class, fn() => new NoTypeDefault());
@@ -154,8 +157,8 @@ class ContainerTest extends TestCase
 
     public function test_resolving(): void
     {
-        $this->container->onResolving(static function(Entry $entry) {
-            self::assertSame(DateTime::class, $entry->id);
+        $this->container->onResolving(static function(Resolving $event) {
+            self::assertSame(DateTime::class, $event->id);
         });
 
         $this->container->singleton(DateTime::class, fn() => new DateTime());
@@ -166,9 +169,9 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $this->container->onResolved(static function(Entry $entry) use ($now): void {
-            self::assertSame(DateTime::class, $entry->id);
-            self::assertSame($now, $entry->getInstance());
+        $this->container->onResolved(static function(Resolved $event) use ($now): void {
+            self::assertSame(DateTime::class, $event->id);
+            self::assertSame($now, $event->instance);
         });
 
         $this->container->singleton(DateTime::class, fn() => $now);

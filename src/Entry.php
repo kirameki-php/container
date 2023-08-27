@@ -179,7 +179,7 @@ class Entry
     protected function assertInherited(mixed $instance): void
     {
         if (!is_a($instance, $this->id)) {
-            throw new InvalidInstanceException("Expected: Instance of {$this->id} " . $instance::class . ' given.', [
+            throw new InvalidInstanceException("Expected: instance of {$this->id}. Got: " . $instance::class . '.', [
                 'this' => $this,
                 'instance' => $instance,
             ]);

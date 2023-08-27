@@ -135,29 +135,32 @@ class Injector
     {
         $args = [];
         foreach ($params as $param) {
-            if ($arg = $this->getInjectingArgument($declaredClass, $param)) {
-                $args[$param->name] = $arg;
-            }
+            $this->setInjectingArgument($args, $declaredClass, $param);
         }
         return $args;
     }
 
     /**
+     * @param array<array-key, mixed> $args
      * @param ReflectionClass<object>|null $declaredClass
      * @param ReflectionParameter $param
-     * @return object|null
+     * @return void
      */
-    protected function getInjectingArgument(?ReflectionClass $declaredClass, ReflectionParameter $param): ?object
+    protected function setInjectingArgument(
+        array &$args,
+        ?ReflectionClass $declaredClass,
+        ReflectionParameter $param,
+    ): void
     {
         if ($param->isVariadic()) {
-            return null;
+            return;
         }
 
         $type = $param->getType();
 
         if ($type === null) {
             if ($param->isDefaultValueAvailable()) {
-                return null;
+                return;
             }
 
             $className = $declaredClass?->name ?? 'Non-Class';
@@ -170,7 +173,7 @@ class Injector
 
         if (!is_a($type, ReflectionNamedType::class) || $type->isBuiltin()) {
             if ($param->isDefaultValueAvailable()) {
-                return null;
+                return;
             }
 
             $className = $declaredClass?->name ?? 'Non-Class';
@@ -189,7 +192,7 @@ class Injector
         }
 
         $paramClass = $this->revealClass($declaredClass, $type->getName());
-        return $this->container->make($paramClass);
+        $args[$param->name] = $this->container->make($paramClass);
     }
 
     /**
