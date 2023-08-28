@@ -17,8 +17,12 @@ use function is_a;
 
 class Injector
 {
+    /**
+     * @param array<string, ContextProvider> $contexts
+     */
     public function __construct(
         protected readonly Container $container,
+        protected array $contexts = [],
     )
     {
     }
@@ -39,16 +43,18 @@ class Injector
      * @param array<array-key, mixed> $args
      * @return TEntry
      */
-    public function instantiate(string $class, array $args): object
+    public function create(string $class, array $args): object
     {
         $reflection = new ReflectionClass($class);
 
+        $args = $this->mergeContextualArgs($reflection, $args);
+
+        $params = $reflection->getConstructor()?->getParameters() ?? [];
+        $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
+
         $this->checkForCircularReference($class);
         $this->processingClass[$class] = null;
-
         try {
-            $params = $reflection->getConstructor()?->getParameters() ?? [];
-            $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
             foreach ($this->getInjectingArguments($reflection, $params) as $name => $arg) {
                 $args[$name] = $arg;
             }
@@ -58,6 +64,18 @@ class Injector
 
         /** @var TEntry */
         return $reflection->newInstance(...$args);
+    }
+
+    /**
+     * @param ReflectionClass<object> $class
+     * @param array<array-key, mixed> $args
+     * @return array<array-key, mixed>
+     */
+    protected function mergeContextualArgs(ReflectionClass $class, array $args): array
+    {
+        return array_key_exists($class->name, $this->contexts)
+            ? $this->contexts[$class->name]->getArguments() + $args
+            : $args;
     }
 
     /**
@@ -135,32 +153,33 @@ class Injector
     {
         $args = [];
         foreach ($params as $param) {
-            $this->setInjectingArgument($args, $declaredClass, $param);
+            $arg = $this->getInjectingArgument($declaredClass, $param);
+            if ($arg !== null) {
+                $args[$param->name] = $arg;
+            }
         }
         return $args;
     }
 
     /**
-     * @param array<array-key, mixed> $args
      * @param ReflectionClass<object>|null $declaredClass
      * @param ReflectionParameter $param
-     * @return void
+     * @return object|null
      */
-    protected function setInjectingArgument(
-        array &$args,
+    protected function getInjectingArgument(
         ?ReflectionClass $declaredClass,
         ReflectionParameter $param,
-    ): void
+    ): ?object
     {
         if ($param->isVariadic()) {
-            return;
+            return null;
         }
 
         $type = $param->getType();
 
         if ($type === null) {
             if ($param->isDefaultValueAvailable()) {
-                return;
+                return null;
             }
 
             $className = $declaredClass?->name ?? 'Non-Class';
@@ -173,7 +192,7 @@ class Injector
 
         if (!is_a($type, ReflectionNamedType::class) || $type->isBuiltin()) {
             if ($param->isDefaultValueAvailable()) {
-                return;
+                return null;
             }
 
             $className = $declaredClass?->name ?? 'Non-Class';
@@ -192,7 +211,22 @@ class Injector
         }
 
         $paramClass = $this->revealClass($declaredClass, $type->getName());
-        $args[$param->name] = $this->container->make($paramClass);
+
+        return $this->getInjectArgumentFromContext($declaredClass, $paramClass)
+            ?? $this->container->make($paramClass);
+    }
+
+    /**
+     * @param ReflectionClass<object>|null $declaredClass
+     * @param class-string<object> $paramClass
+     * @return object|null
+     */
+    protected function getInjectArgumentFromContext(?ReflectionClass $declaredClass, string $paramClass): ?object
+    {
+        $className = $declaredClass?->name ?? '';
+        return array_key_exists($className, $this->contexts)
+            ? $this->contexts[$className]->getClassOrNull($paramClass)
+            : null;
     }
 
     /**

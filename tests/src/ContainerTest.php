@@ -24,6 +24,12 @@ use TypeError;
 
 class ContainerTest extends TestCase
 {
+    public function test_abc(): void
+    {
+        $args =[];
+        dump($args['a']?->b);
+    }
+
     public function test_resolve(): void
     {
         $now = new DateTime();

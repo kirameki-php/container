@@ -2,6 +2,7 @@
 
 namespace Kirameki\Container\Events;
 
+use Kirameki\Container\Lifetime;
 use Kirameki\Core\Event;
 
 class
@@ -13,7 +14,9 @@ Resolved extends Event
      */
     public function __construct(
         public readonly string $id,
+        public readonly Lifetime $lifetime,
         public readonly mixed $instance,
+        public readonly bool $cached,
     )
     {
     }

@@ -70,13 +70,17 @@ class Container implements ContainerInterface
         $resolving = !$entry->isCached();
 
         if ($resolving && $this->resolvingCallbacks?->hasListeners()) {
-            $this->resolvingCallbacks->dispatch(new Resolving($id));
+            $this->resolvingCallbacks->dispatch(
+                new Resolving($id, $entry->getLifetime()),
+            );
         }
 
         $instance =  $entry->getInstance();
 
         if ($resolving && $this->resolvedCallbacks?->hasListeners()) {
-            $this->resolvedCallbacks->dispatch(new Resolved($id, $instance));
+            $this->resolvedCallbacks->dispatch(
+                new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()),
+            );
         }
 
         return $instance;
@@ -225,7 +229,7 @@ class Container implements ContainerInterface
      */
     public function inject(string $class, array $args = []): object
     {
-        return $this->injector->instantiate($class, $args);
+        return $this->injector->create($class, $args);
     }
 
     /**

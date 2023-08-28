@@ -11,6 +11,5 @@ class Basic
         public int $i = 1,
     )
     {
-
     }
 }
