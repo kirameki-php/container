@@ -10,7 +10,9 @@ Resolved extends Event
 {
     /**
      * @param string $id
+     * @param Lifetime $lifetime
      * @param mixed $instance
+     * @param bool $cached
      */
     public function __construct(
         public readonly string $id,

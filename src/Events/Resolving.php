@@ -7,6 +7,10 @@ use Kirameki\Core\Event;
 
 class Resolving extends Event
 {
+    /**
+     * @param string $id
+     * @param Lifetime $lifetime
+     */
     public function __construct(
         public readonly string $id,
         public readonly Lifetime $lifetime,
