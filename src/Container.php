@@ -5,7 +5,6 @@ namespace Kirameki\Container;
 use Closure;
 use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Resolved;
-use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Core\EventHandler;
@@ -25,9 +24,9 @@ class Container implements ContainerInterface
     protected array $entries = [];
 
     /**
-     * @var Tags
+     * @var array<string, null>
      */
-    protected readonly Tags $tags;
+    protected array $scopedEntryIds = [];
 
     /**
      * @var array<string, ContextProvider>
@@ -50,7 +49,6 @@ class Container implements ContainerInterface
     public function __construct(?Injector $injector = null)
     {
         $this->injector = $injector ?? new Injector($this);
-        $this->tags = new Tags();
     }
 
     /**
@@ -106,6 +104,24 @@ class Container implements ContainerInterface
      * @param Closure(Container): TEntry $resolver
      * @return void
      */
+    public function scoped(string $id, Closure $resolver): void
+    {
+        $this->set($id, $resolver, Lifetime::Scoped);
+        $this->scopedEntryIds[$id] = null;
+    }
+
+    /**
+     * Register a given class as a singleton.
+     *
+     * Singletons will cache the result upon resolution.
+     *
+     * Returns itself for chaining.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry>|string $id
+     * @param Closure(Container): TEntry $resolver
+     * @return void
+     */
     public function singleton(string $id, Closure $resolver): void
     {
         $this->set($id, $resolver, Lifetime::Singleton);
@@ -122,8 +138,8 @@ class Container implements ContainerInterface
     public function unset(string $id): bool
     {
         if ($this->has($id)) {
-            $this->tags->deleteId($id);
             unset($this->entries[$id]);
+            unset($this->scopedEntryIds[$id]);
             return true;
         }
         return false;
@@ -160,15 +176,16 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param string $name
-     * @return list<object>
+     * Unset all scoped entries.
+     *
+     * @return void
      */
-    public function getTagged(string $name): array
+    public function unsetScopedEntries(): void
     {
-        return array_map(
-            fn (string $id) => $this->get($id),
-            $this->tags->getByName($name)
-        );
+        foreach (array_keys($this->scopedEntryIds) as $id) {
+            $this->unset($id);
+        }
+        $this->scopedEntryIds = [];
     }
 
     /**
@@ -197,7 +214,7 @@ class Container implements ContainerInterface
                 'existingEntry' => $this->entries[$id],
             ]);
         }
-        return $this->entries[$id] = new Entry($this, $this->tags, $id);
+        return $this->entries[$id] = new Entry($this, $id);
     }
 
     /**

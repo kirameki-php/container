@@ -374,5 +374,4 @@ class ContainerTest extends TestCase
 
         $this->container->make(Variadic::class);
     }
-
 }
