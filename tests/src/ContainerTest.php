@@ -32,7 +32,7 @@ class ContainerTest extends TestCase
 
         $resolved = $this->container->get(DateTime::class);
 
-        self::assertSame($now, $resolved);
+        $this->assertSame($now, $resolved);
         $this->assertTotalResolvedCount(1);
         $this->assertTotalInjectedCount(0);
     }
@@ -51,7 +51,7 @@ class ContainerTest extends TestCase
         $basic1 = $this->container->make(Basic::class);
         $basic2 = $this->container->make(Basic::class);
 
-        self::assertNotSame($basic2->d, $basic1->d);
+        $this->assertNotSame($basic2->d, $basic1->d);
         $this->assertTotalResolvedCount(2);
         $this->assertTotalInjectedCount(2);
     }
@@ -66,11 +66,11 @@ class ContainerTest extends TestCase
 
     public function test_has(): void
     {
-        self::assertFalse($this->container->has(DateTime::class));
+        $this->assertFalse($this->container->has(DateTime::class));
 
         $this->container->set(DateTime::class, static fn() => new DateTime());
 
-        self::assertTrue($this->container->has(DateTime::class));
+        $this->assertTrue($this->container->has(DateTime::class));
     }
 
     public function test_delete(): void
@@ -78,17 +78,38 @@ class ContainerTest extends TestCase
         $this->container->set(DateTime::class, static fn() => new DateTime());
 
         // Check existence and delete
-        self::assertTrue($this->container->has(DateTime::class));
-        self::assertTrue($this->container->unset(DateTime::class));
+        $this->assertTrue($this->container->has(DateTime::class));
+        $this->assertTrue($this->container->unset(DateTime::class));
 
         // Check after delete
-        self::assertFalse($this->container->has(DateTime::class));
+        $this->assertFalse($this->container->has(DateTime::class));
 
         // Try Deleting twice
-        self::assertFalse($this->container->unset(DateTime::class));
+        $this->assertFalse($this->container->unset(DateTime::class));
 
         $this->assertTotalResolvedCount(0);
         $this->assertTotalInjectedCount(0);
+    }
+
+    public function test_scoped(): void
+    {
+        $this->container->scoped(DateTime::class, static fn() => new DateTime());
+
+        $basic1 = $this->container->make(Basic::class);
+        $basic2 = $this->container->make(Basic::class);
+
+        $this->assertSame($basic2->d, $basic1->d);
+        $this->assertTrue($this->container->has(DateTime::class));
+        $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectedCount(2);
+    }
+
+    public function test_scoped_twice(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot register class: ' . DateTime::class . '. Entry already exists.');
+        $this->container->scoped(DateTime::class, static fn() => new DateTime());
+        $this->container->scoped(DateTime::class, static fn() => new DateTime());
     }
 
     public function test_singleton(): void
@@ -98,7 +119,8 @@ class ContainerTest extends TestCase
         $basic1 = $this->container->make(Basic::class);
         $basic2 = $this->container->make(Basic::class);
 
-        self::assertSame($basic2->d, $basic1->d);
+        $this->assertSame($basic2->d, $basic1->d);
+        $this->assertTrue($this->container->has(DateTime::class));
         $this->assertTotalResolvedCount(1);
         $this->assertTotalInjectedCount(2);
     }
@@ -117,8 +139,8 @@ class ContainerTest extends TestCase
         $this->container->extend(Basic::class, fn() => new BasicExtended());
         $basic = $this->container->get(Basic::class);
 
-        self::assertSame('2022-02-02', $basic->d->format('Y-m-d'));
-        self::assertSame(100, $basic->i);
+        $this->assertSame('2022-02-02', $basic->d->format('Y-m-d'));
+        $this->assertSame(100, $basic->i);
         $this->assertTotalResolvedCount(1);
         $this->assertTotalInjectedCount(0);
     }
@@ -132,10 +154,10 @@ class ContainerTest extends TestCase
         $this->container->extend(Basic::class, fn() => new BasicExtended());
         $basic2 = $this->container->get(Basic::class);
 
-        self::assertSame('1970-01-01', $basic1->d->format('Y-m-d'));
-        self::assertSame(1, $basic1->i);
-        self::assertSame('2022-02-02', $basic2->d->format('Y-m-d'));
-        self::assertSame(100, $basic2->i);
+        $this->assertSame('1970-01-01', $basic1->d->format('Y-m-d'));
+        $this->assertSame(1, $basic1->i);
+        $this->assertSame('2022-02-02', $basic2->d->format('Y-m-d'));
+        $this->assertSame(100, $basic2->i);
         $this->assertTotalResolvedCount(1);
         $this->assertTotalInjectedCount(0);
     }
@@ -157,13 +179,21 @@ class ContainerTest extends TestCase
         $this->container->get(DateTime::class);
     }
 
+    public function test_unsetScopedEntries(): void
+    {
+        $this->container->scoped(DateTime::class, static fn() => new DateTime());
+        $this->assertTrue($this->container->has(DateTime::class));
+        $this->container->unsetScopedEntries();
+        $this->assertFalse($this->container->has(DateTime::class));
+    }
+
     public function test_onResolved(): void
     {
         $now = new DateTime();
 
-        $this->container->onResolved(static function(Resolved $event) use ($now): void {
-            self::assertSame(DateTime::class, $event->id);
-            self::assertSame($now, $event->instance);
+        $this->container->onResolved(function(Resolved $event) use ($now): void {
+            $this->assertSame(DateTime::class, $event->id);
+            $this->assertSame($now, $event->instance);
         });
 
         $this->container->singleton(DateTime::class, fn() => $now);
@@ -177,7 +207,7 @@ class ContainerTest extends TestCase
 
         $result = $this->container->make(Basic::class);
 
-        self::assertSame($instance, $result);
+        $this->assertSame($instance, $result);
         $this->assertTotalResolvedCount(1);
         $this->assertTotalInjectedCount(0);
     }
@@ -190,9 +220,9 @@ class ContainerTest extends TestCase
 
         $result = $this->container->make(Basic::class, [$now, 2]);
 
-        self::assertNotSame($basic, $result);
-        self::assertSame($now, $result->d);
-        self::assertSame(2, $result->i);
+        $this->assertNotSame($basic, $result);
+        $this->assertSame($now, $result->d);
+        $this->assertSame(2, $result->i);
         $this->assertTotalResolvedCount(0);
         $this->assertTotalInjectedCount(1);
     }
@@ -202,8 +232,8 @@ class ContainerTest extends TestCase
         $now = new DateTime();
         $basic = $this->container->make(Basic::class, [$now, 2]);
 
-        self::assertSame($now, $basic->d);
-        self::assertSame(2, $basic->i);
+        $this->assertSame($now, $basic->d);
+        $this->assertSame(2, $basic->i);
         $this->assertTotalResolvedCount(0);
         $this->assertTotalInjectedCount(1);
     }
@@ -213,8 +243,8 @@ class ContainerTest extends TestCase
         $now = new DateTime();
 
         $basic = $this->container->make(Basic::class, ['d' => $now, 'i' => 2]);
-        self::assertSame($now, $basic->d);
-        self::assertSame(2, $basic->i);
+        $this->assertSame($now, $basic->d);
+        $this->assertSame(2, $basic->i);
         $this->assertTotalResolvedCount(0);
         $this->assertTotalInjectedCount(1);
     }
@@ -245,8 +275,8 @@ class ContainerTest extends TestCase
         $now = new DateTime();
         $basic = $this->container->make(Basic::class, ['d' => $now]);
 
-        self::assertSame($now->getTimestamp(), $basic->d->getTimestamp());
-        self::assertSame(1, $basic->i);
+        $this->assertSame($now->getTimestamp(), $basic->d->getTimestamp());
+        $this->assertSame(1, $basic->i);
         $this->assertTotalResolvedCount(0);
         $this->assertTotalInjectedCount(1);
     }
@@ -257,8 +287,8 @@ class ContainerTest extends TestCase
         $this->container->set(DateTime::class, static fn() => $now);
         $basic = $this->container->make(Basic::class);
 
-        self::assertSame($now, $basic->d);
-        self::assertSame(1, $basic->i);
+        $this->assertSame($now, $basic->d);
+        $this->assertSame(1, $basic->i);
         $this->assertTotalResolvedCount(1);
         $this->assertTotalInjectedCount(1);
     }
@@ -274,7 +304,7 @@ class ContainerTest extends TestCase
     {
         $noType = $this->container->make(NoTypeDefault::class);
 
-        self::assertSame(1, $noType->a);
+        $this->assertSame(1, $noType->a);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -282,7 +312,7 @@ class ContainerTest extends TestCase
     {
         $variadic = $this->container->make(Variadic::class);
 
-        self::assertEmpty($variadic->list);
+        $this->assertEmpty($variadic->list);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -291,7 +321,7 @@ class ContainerTest extends TestCase
         $this->container->singleton(DateTime::class, fn() => new DateTime());
         $variadic = $this->container->make(Variadic::class);
 
-        self::assertEmpty($variadic->list);
+        $this->assertEmpty($variadic->list);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -300,8 +330,8 @@ class ContainerTest extends TestCase
         $now = new DateTime();
         $variadic = $this->container->make(Variadic::class, [$now, $now]);
 
-        self::assertSame($now, $variadic->list[0]);
-        self::assertSame($now, $variadic->list[1]);
+        $this->assertSame($now, $variadic->list[0]);
+        $this->assertSame($now, $variadic->list[1]);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -336,7 +366,7 @@ class ContainerTest extends TestCase
     public function test_make_with_parent_type(): void
     {
         $parentType = $this->container->make(ParentType::class);
-        self::assertSame(1, $parentType->a);
+        $this->assertSame(1, $parentType->a);
         $this->assertTotalInjectedCount(2);
     }
 
@@ -344,7 +374,7 @@ class ContainerTest extends TestCase
     {
         $this->container->set(DateTime::class, fn () => new DateTime());
         $nullable = $this->container->make(Nullable::class);
-        self::assertInstanceOf(DateTime::class, $nullable->a);
+        $this->assertInstanceOf(DateTime::class, $nullable->a);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -367,9 +397,9 @@ class ContainerTest extends TestCase
 
     public function test_onInjected(): void
     {
-        $this->container->onInjected(static function(Injected $event): void {
-            self::assertSame(Variadic::class, $event->class);
-            self::assertInstanceOf(Variadic::class, $event->instance);
+        $this->container->onInjected(function(Injected $event): void {
+            $this->assertSame(Variadic::class, $event->class);
+            $this->assertInstanceOf(Variadic::class, $event->instance);
         });
 
         $this->container->make(Variadic::class);
