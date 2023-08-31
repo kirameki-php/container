@@ -34,6 +34,15 @@ class Injector
      */
     protected array $processingClass = [];
 
+    /**
+     * @param class-string $class
+     * @param ContextProvider $context
+     * @return ContextProvider
+     */
+    public function setContext(string $class, ContextProvider $context): ContextProvider
+    {
+        return $this->contexts[$class] = $context;
+    }
 
     /**
      * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
@@ -48,22 +57,21 @@ class Injector
         $reflection = new ReflectionClass($class);
 
         $args = $this->mergeContextualArgs($reflection, $args);
-
         $params = $reflection->getConstructor()?->getParameters() ?? [];
-        $params = $this->filterOutArgsFromParameters($reflection, $params, $args);
+        $remainingParams = $this->filterOutArgsFromParams($reflection, $params, $args);
+        $injections = $this->getContextualInjections($class, $params);
 
         $this->checkForCircularReference($class);
         $this->processingClass[$class] = null;
         try {
-            foreach ($this->getInjectingArguments($reflection, $params) as $name => $arg) {
+            foreach ($this->getArguments($reflection, $remainingParams, $injections) as $name => $arg) {
                 $args[$name] = $arg;
             }
         } finally {
             unset($this->processingClass[$class]);
         }
 
-        /** @var TEntry */
-        return $reflection->newInstance(...$args);
+        return new $class(...$args);
     }
 
     /**
@@ -79,6 +87,43 @@ class Injector
     }
 
     /**
+     * @param class-string $class
+     * @param list<ReflectionParameter> $params
+     * @return array<class-string, object>
+     */
+    protected function getContextualInjections(string $class, array $params): array
+    {
+        if (!array_key_exists($class, $this->contexts)) {
+            return [];
+        }
+
+        $injections = $this->contexts[$class]->getProvided();
+
+        if ($injections === []) {
+            return [];
+        }
+
+        $clone = $injections;
+        foreach ($params as $param) {
+            $type = $param->getType();
+            if ($type !== null && is_a($type, ReflectionNamedType::class)) {
+                unset($clone[$type->getName()]);
+            }
+        }
+
+        if ($clone !== []) {
+            $missingClasses = implode(', ', array_keys($clone));
+            throw new InjectionException("Provided injections: {$missingClasses} do not exist for class: {$class}.", [
+                'class' => $class,
+                'params' => $params,
+                'missingInjections' => $clone,
+            ]);
+        }
+
+        return $injections;
+    }
+
+    /**
      * @template TResult
      * @param Closure(): TResult $closure
      * @param array<array-key, mixed> $args
@@ -91,8 +136,8 @@ class Injector
         $scopedClass = $reflection->getClosureScopeClass();
 
         $params = $reflection->getParameters();
-        $params = $this->filterOutArgsFromParameters($scopedClass, $params, $args);
-        foreach ($this->getInjectingArguments($scopedClass, $params) as $name => $arg) {
+        $params = $this->filterOutArgsFromParams($scopedClass, $params, $args);
+        foreach ($this->getArguments($scopedClass, $params) as $name => $arg) {
             $args[$name] = $arg;
         }
 
@@ -105,7 +150,7 @@ class Injector
      * @param list<ReflectionParameter> $params
      * @return list<ReflectionParameter>
      */
-    protected function filterOutArgsFromParameters(?ReflectionClass $class, array $params, array $args):array
+    protected function filterOutArgsFromParams(?ReflectionClass $class, array $params, array $args):array
     {
         $paramsMap = null;
         $isVariadic = false;
@@ -147,13 +192,18 @@ class Injector
     /**
      * @param ReflectionClass<object>|null $declaredClass
      * @param list<ReflectionParameter> $params
+     * @param array<class-string, object> $injections
      * @return array<string, mixed>
      */
-    protected function getInjectingArguments(?ReflectionClass $declaredClass, array $params): array
+    protected function getArguments(
+        ?ReflectionClass $declaredClass,
+        array $params,
+        array $injections = [],
+    ): array
     {
         $args = [];
         foreach ($params as $param) {
-            $arg = $this->getInjectingArgument($declaredClass, $param);
+            $arg = $this->getArgument($declaredClass, $param, $injections);
             if ($arg !== null) {
                 $args[$param->name] = $arg;
             }
@@ -164,11 +214,13 @@ class Injector
     /**
      * @param ReflectionClass<object>|null $declaredClass
      * @param ReflectionParameter $param
+     * @param array<class-string, object> $injections
      * @return object|null
      */
-    protected function getInjectingArgument(
+    protected function getArgument(
         ?ReflectionClass $declaredClass,
         ReflectionParameter $param,
+        array $injections,
     ): ?object
     {
         if ($param->isVariadic()) {
@@ -212,21 +264,7 @@ class Injector
 
         $paramClass = $this->revealClass($declaredClass, $type->getName());
 
-        return $this->getInjectArgumentFromContext($declaredClass, $paramClass)
-            ?? $this->container->make($paramClass);
-    }
-
-    /**
-     * @param ReflectionClass<object>|null $declaredClass
-     * @param class-string<object> $paramClass
-     * @return object|null
-     */
-    protected function getInjectArgumentFromContext(?ReflectionClass $declaredClass, string $paramClass): ?object
-    {
-        $className = $declaredClass?->name ?? '';
-        return array_key_exists($className, $this->contexts)
-            ? $this->contexts[$className]->getClassOrNull($paramClass)
-            : null;
+        return $injections[$paramClass] ?? $this->container->make($paramClass);
     }
 
     /**

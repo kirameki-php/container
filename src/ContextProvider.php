@@ -6,13 +6,13 @@ class ContextProvider
 {
     /**
      * @param class-string<object> $class
-     * @param array<class-string, object> $injections
-     * @param array<string, mixed> $arguments
+     * @param array<class-string, object> $provided
+     * @param array<array-key, mixed> $arguments
      */
     public function __construct(
         protected string $class,
-        protected array $injections = [],
-        protected array $arguments = [],
+        protected ?array $provided = null,
+        protected ?array $arguments = null,
     )
     {
     }
@@ -25,16 +25,18 @@ class ContextProvider
      */
     public function provide(string $class, mixed $instance): static
     {
-        $this->injections[$class] = $instance;
+        $this->provided ??= [];
+        $this->provided[$class] = $instance;
         return $this;
     }
 
     /**
-     * @param iterable<array-key, mixed> $arguments
+     * @param mixed ...$arguments
      * @return $this
      */
-    public function setArguments(iterable $arguments): static
+    public function pass(mixed ...$arguments): static
     {
+        $this->arguments ??= [];
         foreach ($arguments as $name => $value) {
             $this->arguments[$name] = $value;
         }
@@ -47,19 +49,15 @@ class ContextProvider
      */
     public function getArguments(): array
     {
-        return $this->arguments;
+        return $this->arguments ?? [];
     }
 
     /**
      * @internal
-     * @template T of object
-     * @param class-string<T> $class
-     * @return T|null
+     * @return array<class-string, object>
      */
-    public function getClassOrNull(string $class): ?object
+    public function getProvided(): array
     {
-        /** @var T|null */
-        return $this->injections[$class] ?? null;
+        return $this->provided ?? [];
     }
-
 }

@@ -29,11 +29,6 @@ class Container implements ContainerInterface
     protected array $scopedEntryIds = [];
 
     /**
-     * @var array<string, ContextProvider>
-     */
-    protected array $contexts = [];
-
-    /**
      * @var EventHandler<Resolved>|null
      */
     protected ?EventHandler $resolvedCallbacks = null;
@@ -258,7 +253,7 @@ class Container implements ContainerInterface
      */
     public function whenInjecting(string $class): ContextProvider
     {
-        return $this->contexts[$class] = new ContextProvider($class);
+        return $this->injector->setContext($class, new ContextProvider($class));
     }
 
     /**

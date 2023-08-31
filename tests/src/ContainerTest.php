@@ -5,6 +5,7 @@ namespace Tests\Kirameki\Container;
 use DateTime;
 use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Resolved;
+use Kirameki\Container\Exceptions\InjectionException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use Kirameki\Core\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
@@ -191,7 +192,7 @@ class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $this->container->onResolved(function(Resolved $event) use ($now): void {
+        $this->container->onResolved(function (Resolved $event) use ($now): void {
             $this->assertSame(DateTime::class, $event->id);
             $this->assertSame($now, $event->instance);
         });
@@ -359,7 +360,7 @@ class ContainerTest extends TestCase
     public function test_make_with_self_type(): void
     {
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Circular Dependency detected! ' . SelfType::class . ' -> '  . SelfType::class);
+        $this->expectExceptionMessage('Circular Dependency detected! ' . SelfType::class . ' -> ' . SelfType::class);
         $this->container->make(SelfType::class);
     }
 
@@ -372,7 +373,7 @@ class ContainerTest extends TestCase
 
     public function test_make_with_nullable_type(): void
     {
-        $this->container->set(DateTime::class, fn () => new DateTime());
+        $this->container->set(DateTime::class, fn() => new DateTime());
         $nullable = $this->container->make(Nullable::class);
         $this->assertInstanceOf(DateTime::class, $nullable->a);
         $this->assertTotalInjectedCount(1);
@@ -397,11 +398,65 @@ class ContainerTest extends TestCase
 
     public function test_onInjected(): void
     {
-        $this->container->onInjected(function(Injected $event): void {
+        $this->container->onInjected(function (Injected $event): void {
             $this->assertSame(Variadic::class, $event->class);
             $this->assertInstanceOf(Variadic::class, $event->instance);
         });
 
         $this->container->make(Variadic::class);
+    }
+
+    public function test_whenInjecting_with_provided_type(): void
+    {
+        $now = new DateTime();
+        $this->container->whenInjecting(Basic::class)->provide(DateTime::class, $now);
+        $var = $this->container->inject(Basic::class);
+
+        $this->assertSame($now, $var->d);
+        $this->assertSame(1, $var->i);
+        $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectedCount(1);
+    }
+
+    public function test_whenInjecting_with_provided_non_existing_type(): void
+    {
+        $this->expectExceptionMessage('Provided injections: ' . Builtin::class . ' do not exist for class: ' . Basic::class);
+        $this->expectException(InjectionException::class);
+        $this->container->whenInjecting(Basic::class)
+            ->provide(Builtin::class, new Builtin(1))
+            ->provide(DateTime::class, new DateTime());
+        $this->container->inject(Basic::class);
+    }
+
+    public function test_whenInjecting_with_positional_args_no_type(): void
+    {
+        $this->container->whenInjecting(NoType::class)->pass(a: true, b: 2);
+        $var = $this->container->inject(NoType::class);
+
+        $this->assertSame(true, $var->a);
+        $this->assertSame(2, $var->b);
+        $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectedCount(1);
+    }
+
+    public function test_whenInjecting_with_positional_args_variadic(): void
+    {
+        $now = new DateTime();
+        $this->container->whenInjecting(Variadic::class)->pass($now, $now);
+        $var = $this->container->inject(Variadic::class);
+
+        $this->assertSame([$now, $now], $var->list);
+        $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectedCount(1);
+    }
+
+    public function test_whenInjecting_with_named_args(): void
+    {
+        $this->container->whenInjecting(Builtin::class)->pass(a: 2);
+        $var = $this->container->inject(Builtin::class);
+
+        $this->assertSame(2, $var->a);
+        $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectedCount(1);
     }
 }
