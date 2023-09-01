@@ -26,13 +26,13 @@ use Tests\Kirameki\Container\Sample\Union;
 use Tests\Kirameki\Container\Sample\Variadic;
 use TypeError;
 
-class ContainerTest extends TestCase
+final class ContainerTest extends TestCase
 {
     public function test_get(): void
     {
         $now = new DateTime();
         $this->container->set(DateTime::class, static fn() => $now);
-        
+
         $resolved = $this->container->get(DateTime::class);
 
         $this->assertSame($now, $resolved);
@@ -202,30 +202,6 @@ class ContainerTest extends TestCase
         $this->assertTrue($this->container->has(DateTime::class));
         $this->container->unsetScopedEntries();
         $this->assertFalse($this->container->has(DateTime::class));
-    }
-
-    public function test_onResolving(): void
-    {
-        $this->container->onResolving(function (Resolving $event): void {
-            $this->assertSame(DateTime::class, $event->id);
-            $this->assertSame(Lifetime::Singleton, $event->lifetime);
-        });
-
-        $this->container->singleton(DateTime::class, fn() => new DateTime());
-        $this->container->get(DateTime::class);
-    }
-
-    public function test_onResolved(): void
-    {
-        $now = new DateTime();
-
-        $this->container->onResolved(function (Resolved $event) use ($now): void {
-            $this->assertSame(DateTime::class, $event->id);
-            $this->assertSame($now, $event->instance);
-        });
-
-        $this->container->singleton(DateTime::class, fn() => $now);
-        $this->container->get(DateTime::class);
     }
 
     public function test_make_with_bound_class(): void
@@ -436,25 +412,6 @@ class ContainerTest extends TestCase
         $this->container->make(Circular1::class);
     }
 
-    public function test_onInjecting(): void
-    {
-        $this->container->onInjecting(function (Injecting $event): void {
-            $this->assertSame(Variadic::class, $event->class);
-        });
-
-        $this->container->make(Variadic::class);
-    }
-
-    public function test_onInjected(): void
-    {
-        $this->container->onInjected(function (Injected $event): void {
-            $this->assertSame(Variadic::class, $event->class);
-            $this->assertInstanceOf(Variadic::class, $event->instance);
-        });
-
-        $this->container->make(Variadic::class);
-    }
-
     public function test_whenInjecting_with_provided_type(): void
     {
         $now = new DateTime();
@@ -505,7 +462,62 @@ class ContainerTest extends TestCase
         $var = $this->container->inject(Builtin::class);
 
         $this->assertSame(2, $var->a);
+        $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
+    }
+
+    public function test_call(): void
+    {
+        $this->container->set(Builtin::class, fn() => new Builtin(1));
+        $this->assertSame(1, $this->container->call(static fn (Builtin $o) => $o->a));
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
+        $this->assertTotalInjectedCount(0);
+    }
+
+    public function test_onResolving(): void
+    {
+        $this->container->onResolving(function (Resolving $event): void {
+            $this->assertSame(DateTime::class, $event->id);
+            $this->assertSame(Lifetime::Singleton, $event->lifetime);
+        });
+
+        $this->container->singleton(DateTime::class, fn() => new DateTime());
+        $this->container->get(DateTime::class);
+    }
+
+    public function test_onResolved(): void
+    {
+        $now = new DateTime();
+
+        $this->container->onResolved(function (Resolved $event) use ($now): void {
+            $this->assertSame(DateTime::class, $event->id);
+            $this->assertSame($now, $event->instance);
+        });
+
+        $this->container->singleton(DateTime::class, fn() => $now);
+        $this->container->get(DateTime::class);
+    }
+
+    public function test_onInjecting(): void
+    {
+        $this->container->onInjecting(function (Injecting $event): void {
+            $this->assertSame(Variadic::class, $event->class);
+        });
+
+        $this->container->make(Variadic::class);
+    }
+
+    public function test_onInjected(): void
+    {
+        $this->container->onInjected(function (Injected $event): void {
+            $this->assertSame(Variadic::class, $event->class);
+            $this->assertInstanceOf(Variadic::class, $event->instance);
+        });
+
+        $this->container->make(Variadic::class);
     }
 }

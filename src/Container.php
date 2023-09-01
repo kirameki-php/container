@@ -269,12 +269,11 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @template TResult
-     * @param Closure(): TResult $closure
+     * @param Closure $closure
      * @param array<array-key, mixed> $args
-     * @return TResult
+     * @return mixed
      */
-    public function call(Closure $closure, mixed $args): mixed
+    public function call(Closure $closure, mixed $args = []): mixed
     {
         return $this->injector->invoke($closure, $args);
     }
