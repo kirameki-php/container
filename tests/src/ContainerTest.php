@@ -31,9 +31,8 @@ class ContainerTest extends TestCase
     public function test_get(): void
     {
         $now = new DateTime();
-
         $this->container->set(DateTime::class, static fn() => $now);
-
+        
         $resolved = $this->container->get(DateTime::class);
 
         $this->assertSame($now, $resolved);
