@@ -4,7 +4,9 @@ namespace Kirameki\Container;
 
 use Closure;
 use Kirameki\Container\Events\Injected;
+use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
+use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Core\EventHandler;
@@ -29,9 +31,19 @@ class Container implements ContainerInterface
     protected array $scopedEntryIds = [];
 
     /**
+     * @var EventHandler<Resolving>|null
+     */
+    protected ?EventHandler $resolvingCallbacks = null;
+
+    /**
      * @var EventHandler<Resolved>|null
      */
     protected ?EventHandler $resolvedCallbacks = null;
+
+    /**
+     * @var EventHandler<Injecting>|null
+     */
+    protected ?EventHandler $injectingCallbacks = null;
 
     /**
      * @var EventHandler<Injected>|null
@@ -61,14 +73,16 @@ class Container implements ContainerInterface
     public function get(string $id): mixed
     {
         $entry = $this->getEntry($id);
-        $resolving = !$entry->isCached();
+
+        if ($entry->isCached()) {
+            return $entry->getInstance();
+        }
+
+        $this->resolvingCallbacks?->dispatch(new Resolving($id, $entry->getLifetime()));
+
         $instance = $entry->getInstance();
 
-        if ($resolving && $this->resolvedCallbacks?->hasListeners()) {
-            $this->resolvedCallbacks->dispatch(
-                new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()),
-            );
-        }
+        $this->resolvedCallbacks?->dispatch(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
 
         return $instance;
     }
@@ -235,13 +249,11 @@ class Container implements ContainerInterface
      */
     public function inject(string $class, array $args = []): object
     {
+        $this->injectingCallbacks?->dispatch(new Injecting($class));
+
         $instance = $this->injector->create($class, $args);
 
-        if ($this->injectedCallbacks?->hasListeners()) {
-            $this->injectedCallbacks->dispatch(
-                new Injected($class, $instance),
-            );
-        }
+        $this->injectedCallbacks?->dispatch(new Injected($class, $instance));
 
         return $instance;
     }
@@ -268,6 +280,17 @@ class Container implements ContainerInterface
     }
 
     /**
+     * Set a callback which is called when a class is resolving.
+     *
+     * @param Closure(Resolving): mixed $callback
+     * @return void
+     */
+    public function onResolving(Closure $callback): void
+    {
+        ($this->resolvingCallbacks ??= new EventHandler(Resolving::class))->listen($callback);
+    }
+
+    /**
      * Set a callback which is called when a class is resolved.
      *
      * @param Closure(Resolved): mixed $callback
@@ -275,19 +298,27 @@ class Container implements ContainerInterface
      */
     public function onResolved(Closure $callback): void
     {
-        $this->resolvedCallbacks ??= new EventHandler(Resolved::class);
-        $this->resolvedCallbacks->listen($callback);
+        ($this->resolvedCallbacks ??= new EventHandler(Resolved::class))->listen($callback);
     }
 
     /**
-     * Set a callback which is called when a class is resolving.
+     * Set a callback which is called when a class is injecting.
+     *
+     * @param Closure(Injecting): mixed $callback
+     * @return void
+     */
+    public function onInjecting(Closure $callback): void
+    {
+        ($this->injectingCallbacks ??= new EventHandler(Injecting::class))->listen($callback);
+    }
+    /**
+     * Set a callback which is called when a class is injected.
      *
      * @param Closure(Injected): mixed $callback
      * @return void
      */
     public function onInjected(Closure $callback): void
     {
-        $this->injectedCallbacks ??= new EventHandler(Injected::class);
-        $this->injectedCallbacks->listen($callback);
+        ($this->injectedCallbacks ??= new EventHandler(Injected::class))->listen($callback);
     }
 }

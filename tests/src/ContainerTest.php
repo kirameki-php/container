@@ -4,9 +4,12 @@ namespace Tests\Kirameki\Container;
 
 use DateTime;
 use Kirameki\Container\Events\Injected;
+use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
+use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\InjectionException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
+use Kirameki\Container\Lifetime;
 use Kirameki\Core\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
@@ -34,7 +37,9 @@ class ContainerTest extends TestCase
         $resolved = $this->container->get(DateTime::class);
 
         $this->assertSame($now, $resolved);
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
         $this->assertTotalInjectedCount(0);
     }
 
@@ -53,7 +58,9 @@ class ContainerTest extends TestCase
         $basic2 = $this->container->make(Basic::class);
 
         $this->assertNotSame($basic2->d, $basic1->d);
+        $this->assertTotalResolvingCount(2);
         $this->assertTotalResolvedCount(2);
+        $this->assertTotalInjectingCount(2);
         $this->assertTotalInjectedCount(2);
     }
 
@@ -88,7 +95,9 @@ class ContainerTest extends TestCase
         // Try Deleting twice
         $this->assertFalse($this->container->unset(DateTime::class));
 
+        $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(0);
         $this->assertTotalInjectedCount(0);
     }
 
@@ -101,7 +110,9 @@ class ContainerTest extends TestCase
 
         $this->assertSame($basic2->d, $basic1->d);
         $this->assertTrue($this->container->has(DateTime::class));
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(2);
         $this->assertTotalInjectedCount(2);
     }
 
@@ -122,7 +133,9 @@ class ContainerTest extends TestCase
 
         $this->assertSame($basic2->d, $basic1->d);
         $this->assertTrue($this->container->has(DateTime::class));
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(2);
         $this->assertTotalInjectedCount(2);
     }
 
@@ -142,7 +155,9 @@ class ContainerTest extends TestCase
 
         $this->assertSame('2022-02-02', $basic->d->format('Y-m-d'));
         $this->assertSame(100, $basic->i);
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
         $this->assertTotalInjectedCount(0);
     }
 
@@ -159,7 +174,9 @@ class ContainerTest extends TestCase
         $this->assertSame(1, $basic1->i);
         $this->assertSame('2022-02-02', $basic2->d->format('Y-m-d'));
         $this->assertSame(100, $basic2->i);
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
         $this->assertTotalInjectedCount(0);
     }
 
@@ -188,6 +205,17 @@ class ContainerTest extends TestCase
         $this->assertFalse($this->container->has(DateTime::class));
     }
 
+    public function test_onResolving(): void
+    {
+        $this->container->onResolving(function (Resolving $event): void {
+            $this->assertSame(DateTime::class, $event->id);
+            $this->assertSame(Lifetime::Singleton, $event->lifetime);
+        });
+
+        $this->container->singleton(DateTime::class, fn() => new DateTime());
+        $this->container->get(DateTime::class);
+    }
+
     public function test_onResolved(): void
     {
         $now = new DateTime();
@@ -209,7 +237,9 @@ class ContainerTest extends TestCase
         $result = $this->container->make(Basic::class);
 
         $this->assertSame($instance, $result);
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
         $this->assertTotalInjectedCount(0);
     }
 
@@ -224,8 +254,11 @@ class ContainerTest extends TestCase
         $this->assertNotSame($basic, $result);
         $this->assertSame($now, $result->d);
         $this->assertSame(2, $result->i);
+        $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
+
     }
 
     public function test_make_with_parameters(): void
@@ -235,7 +268,9 @@ class ContainerTest extends TestCase
 
         $this->assertSame($now, $basic->d);
         $this->assertSame(2, $basic->i);
+        $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -246,7 +281,9 @@ class ContainerTest extends TestCase
         $basic = $this->container->make(Basic::class, ['d' => $now, 'i' => 2]);
         $this->assertSame($now, $basic->d);
         $this->assertSame(2, $basic->i);
+        $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -278,7 +315,9 @@ class ContainerTest extends TestCase
 
         $this->assertSame($now->getTimestamp(), $basic->d->getTimestamp());
         $this->assertSame(1, $basic->i);
+        $this->assertTotalResolvingCount(0);
         $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -290,7 +329,9 @@ class ContainerTest extends TestCase
 
         $this->assertSame($now, $basic->d);
         $this->assertSame(1, $basic->i);
+        $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
     }
 
@@ -394,6 +435,15 @@ class ContainerTest extends TestCase
         ]));
         $this->expectException(LogicException::class);
         $this->container->make(Circular1::class);
+    }
+
+    public function test_onInjecting(): void
+    {
+        $this->container->onInjecting(function (Injecting $event): void {
+            $this->assertSame(Variadic::class, $event->class);
+        });
+
+        $this->container->make(Variadic::class);
     }
 
     public function test_onInjected(): void
