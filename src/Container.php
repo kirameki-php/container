@@ -33,22 +33,22 @@ class Container implements ContainerInterface
     /**
      * @var EventHandler<Resolving>|null
      */
-    protected ?EventHandler $resolvingCallbacks = null;
+    protected ?EventHandler $onResolving = null;
 
     /**
      * @var EventHandler<Resolved>|null
      */
-    protected ?EventHandler $resolvedCallbacks = null;
+    protected ?EventHandler $onResolved = null;
 
     /**
      * @var EventHandler<Injecting>|null
      */
-    protected ?EventHandler $injectingCallbacks = null;
+    protected ?EventHandler $onInjecting = null;
 
     /**
      * @var EventHandler<Injected>|null
      */
-    protected ?EventHandler $injectedCallbacks = null;
+    protected ?EventHandler $onInjected = null;
 
     /**
      * @param Injector|null $injector
@@ -78,11 +78,11 @@ class Container implements ContainerInterface
             return $entry->getInstance();
         }
 
-        $this->resolvingCallbacks?->dispatch(new Resolving($id, $entry->getLifetime()));
+        $this->onResolving?->dispatch(new Resolving($id, $entry->getLifetime()));
 
         $instance = $entry->getInstance();
 
-        $this->resolvedCallbacks?->dispatch(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
+        $this->onResolved?->dispatch(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
 
         return $instance;
     }
@@ -249,11 +249,11 @@ class Container implements ContainerInterface
      */
     public function inject(string $class, array $args = []): object
     {
-        $this->injectingCallbacks?->dispatch(new Injecting($class));
+        $this->onInjecting?->dispatch(new Injecting($class));
 
         $instance = $this->injector->create($class, $args);
 
-        $this->injectedCallbacks?->dispatch(new Injected($class, $instance));
+        $this->onInjected?->dispatch(new Injected($class, $instance));
 
         return $instance;
     }
@@ -286,7 +286,7 @@ class Container implements ContainerInterface
      */
     public function onResolving(Closure $callback): void
     {
-        ($this->resolvingCallbacks ??= new EventHandler(Resolving::class))->listen($callback);
+        ($this->onResolving ??= new EventHandler(Resolving::class))->listen($callback);
     }
 
     /**
@@ -297,7 +297,7 @@ class Container implements ContainerInterface
      */
     public function onResolved(Closure $callback): void
     {
-        ($this->resolvedCallbacks ??= new EventHandler(Resolved::class))->listen($callback);
+        ($this->onResolved ??= new EventHandler(Resolved::class))->listen($callback);
     }
 
     /**
@@ -308,7 +308,7 @@ class Container implements ContainerInterface
      */
     public function onInjecting(Closure $callback): void
     {
-        ($this->injectingCallbacks ??= new EventHandler(Injecting::class))->listen($callback);
+        ($this->onInjecting ??= new EventHandler(Injecting::class))->listen($callback);
     }
     /**
      * Set a callback which is called when a class is injected.
@@ -318,6 +318,6 @@ class Container implements ContainerInterface
      */
     public function onInjected(Closure $callback): void
     {
-        ($this->injectedCallbacks ??= new EventHandler(Injected::class))->listen($callback);
+        ($this->onInjected ??= new EventHandler(Injected::class))->listen($callback);
     }
 }
