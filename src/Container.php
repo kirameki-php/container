@@ -12,6 +12,7 @@ use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Core\EventHandler;
 use Psr\Container\ContainerInterface;
 use function array_key_exists;
+use function array_keys;
 
 class Container implements ContainerInterface
 {

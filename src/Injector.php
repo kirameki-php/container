@@ -12,8 +12,12 @@ use ReflectionParameter;
 use ReflectionUnionType;
 use function array_key_exists;
 use function array_keys;
+use function assert;
+use function class_exists;
 use function implode;
+use function interface_exists;
 use function is_a;
+use function is_int;
 
 class Injector
 {

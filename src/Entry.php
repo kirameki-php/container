@@ -5,6 +5,7 @@ namespace Kirameki\Container;
 use Closure;
 use Kirameki\Container\Exceptions\InvalidInstanceException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
+use function in_array;
 use function is_a;
 
 class Entry
