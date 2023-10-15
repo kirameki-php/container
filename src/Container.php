@@ -9,7 +9,7 @@ use Kirameki\Container\Events\Resolved;
 use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
-use Kirameki\Core\EventHandler;
+use Kirameki\Event\EventHandler;
 use Psr\Container\ContainerInterface;
 use function array_key_exists;
 use function array_keys;
@@ -79,11 +79,11 @@ class Container implements ContainerInterface
             return $entry->getInstance();
         }
 
-        $this->onResolving?->dispatch(new Resolving($id, $entry->getLifetime()));
+        $this->onResolving?->emit(new Resolving($id, $entry->getLifetime()));
 
         $instance = $entry->getInstance();
 
-        $this->onResolved?->dispatch(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
+        $this->onResolved?->emit(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
 
         return $instance;
     }
@@ -250,11 +250,11 @@ class Container implements ContainerInterface
      */
     public function inject(string $class, array $args = []): object
     {
-        $this->onInjecting?->dispatch(new Injecting($class));
+        $this->onInjecting?->emit(new Injecting($class));
 
         $instance = $this->injector->create($class, $args);
 
-        $this->onInjected?->dispatch(new Injected($class, $instance));
+        $this->onInjected?->emit(new Injected($class, $instance));
 
         return $instance;
     }
@@ -287,7 +287,7 @@ class Container implements ContainerInterface
      */
     public function onResolving(Closure $callback): void
     {
-        ($this->onResolving ??= new EventHandler(Resolving::class))->listen($callback);
+        ($this->onResolving ??= new EventHandler(Resolving::class))->append($callback);
     }
 
     /**
@@ -298,7 +298,7 @@ class Container implements ContainerInterface
      */
     public function onResolved(Closure $callback): void
     {
-        ($this->onResolved ??= new EventHandler(Resolved::class))->listen($callback);
+        ($this->onResolved ??= new EventHandler(Resolved::class))->append($callback);
     }
 
     /**
@@ -309,7 +309,7 @@ class Container implements ContainerInterface
      */
     public function onInjecting(Closure $callback): void
     {
-        ($this->onInjecting ??= new EventHandler(Injecting::class))->listen($callback);
+        ($this->onInjecting ??= new EventHandler(Injecting::class))->append($callback);
     }
     /**
      * Set a callback which is called when a class is injected.
@@ -319,6 +319,6 @@ class Container implements ContainerInterface
      */
     public function onInjected(Closure $callback): void
     {
-        ($this->onInjected ??= new EventHandler(Injected::class))->listen($callback);
+        ($this->onInjected ??= new EventHandler(Injected::class))->append($callback);
     }
 }

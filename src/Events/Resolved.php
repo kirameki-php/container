@@ -3,7 +3,7 @@
 namespace Kirameki\Container\Events;
 
 use Kirameki\Container\Lifetime;
-use Kirameki\Core\Event;
+use Kirameki\Event\Event;
 
 class
 Resolved extends Event

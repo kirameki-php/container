@@ -2,7 +2,7 @@
 
 namespace Kirameki\Container\Events;
 
-use Kirameki\Core\Event;
+use Kirameki\Event\Event;
 
 class
 Injected extends Event
