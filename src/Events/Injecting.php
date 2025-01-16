@@ -4,8 +4,7 @@ namespace Kirameki\Container\Events;
 
 use Kirameki\Event\Event;
 
-class
-Injecting extends Event
+class Injecting extends Event
 {
     /**
      * @param string $class

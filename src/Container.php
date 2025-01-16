@@ -10,6 +10,7 @@ use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Event\EventHandler;
+use Kirameki\Event\Listeners\CallbackListener;
 use Psr\Container\ContainerInterface;
 use function array_key_exists;
 use function array_keys;
@@ -287,7 +288,7 @@ class Container implements ContainerInterface
      */
     public function onResolving(Closure $callback): void
     {
-        ($this->onResolving ??= new EventHandler(Resolving::class))->append($callback);
+        ($this->onResolving ??= new EventHandler(Resolving::class))->append(new CallbackListener($callback));
     }
 
     /**
@@ -298,7 +299,7 @@ class Container implements ContainerInterface
      */
     public function onResolved(Closure $callback): void
     {
-        ($this->onResolved ??= new EventHandler(Resolved::class))->append($callback);
+        ($this->onResolved ??= new EventHandler(Resolved::class))->append(new CallbackListener($callback));
     }
 
     /**
@@ -309,7 +310,7 @@ class Container implements ContainerInterface
      */
     public function onInjecting(Closure $callback): void
     {
-        ($this->onInjecting ??= new EventHandler(Injecting::class))->append($callback);
+        ($this->onInjecting ??= new EventHandler(Injecting::class))->append(new CallbackListener($callback));
     }
     /**
      * Set a callback which is called when a class is injected.
@@ -319,6 +320,6 @@ class Container implements ContainerInterface
      */
     public function onInjected(Closure $callback): void
     {
-        ($this->onInjected ??= new EventHandler(Injected::class))->append($callback);
+        ($this->onInjected ??= new EventHandler(Injected::class))->append(new CallbackListener($callback));
     }
 }

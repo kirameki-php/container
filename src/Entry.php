@@ -90,7 +90,7 @@ class Entry
     {
         $this->extenders[] = $extender;
 
-        /** @var TEntry $instance */
+        /** @var TEntry|null $instance */
         $instance = $this->instance;
         if ($instance !== null) {
             $this->instance = $this->applyExtender($instance, $extender);

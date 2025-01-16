@@ -151,7 +151,7 @@ class Injector
      * @param ReflectionClass<object>|null $class
      * @param array<array-key, mixed> $args
      * @param list<ReflectionParameter> $params
-     * @return list<ReflectionParameter>
+     * @return array<int, ReflectionParameter>
      */
     protected function filterOutArgsFromParams(?ReflectionClass $class, array $params, array $args):array
     {
@@ -194,7 +194,7 @@ class Injector
 
     /**
      * @param ReflectionClass<object>|null $declaredClass
-     * @param list<ReflectionParameter> $params
+     * @param array<int, ReflectionParameter> $params
      * @param array<class-string, object> $injections
      * @return array<string, mixed>
      */
@@ -237,7 +237,7 @@ class Injector
                 return null;
             }
 
-            $className = $declaredClass?->name ?? 'Non-Class';
+            $className = $declaredClass->name ?? 'Non-Class';
             $paramName = $param->name;
             throw new InjectionException("[{$className}] Argument: \${$paramName} must be a class or have a default value.", [
                 'declaredClass' => $declaredClass,
@@ -250,7 +250,7 @@ class Injector
                 return null;
             }
 
-            $className = $declaredClass?->name ?? 'Non-Class';
+            $className = $declaredClass->name ?? 'Non-Class';
             $typeName = (string) $type;
             $paramName = $param->name;
             $typeCategory = match (true) {

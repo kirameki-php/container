@@ -5,8 +5,7 @@ namespace Kirameki\Container\Events;
 use Kirameki\Container\Lifetime;
 use Kirameki\Event\Event;
 
-class
-Resolving extends Event
+class Resolving extends Event
 {
     /**
      * @param string $id
