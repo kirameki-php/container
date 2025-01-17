@@ -10,7 +10,6 @@ use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Event\EventHandler;
-use Kirameki\Event\Listeners\CallbackListener;
 use Psr\Container\ContainerInterface;
 use function array_key_exists;
 use function array_keys;
@@ -35,22 +34,50 @@ class Container implements ContainerInterface
     /**
      * @var EventHandler<Resolving>|null
      */
-    protected ?EventHandler $onResolving = null;
+    protected ?EventHandler $onResolvingHandler = null;
 
     /**
      * @var EventHandler<Resolved>|null
      */
-    protected ?EventHandler $onResolved = null;
+    protected ?EventHandler $onResolvedHandler = null;
 
     /**
      * @var EventHandler<Injecting>|null
      */
-    protected ?EventHandler $onInjecting = null;
+    protected ?EventHandler $onInjectingHandler = null;
 
     /**
      * @var EventHandler<Injected>|null
      */
-    protected ?EventHandler $onInjected = null;
+    protected ?EventHandler $onInjectedHandler = null;
+
+    /**
+     * @var EventHandler<Resolving>
+     */
+    public EventHandler $onResolving {
+        get { return $this->onResolvingHandler ??= new EventHandler(Resolving::class); }
+    }
+
+    /**
+     * @var EventHandler<Resolved>
+     */
+    public EventHandler $onResolved {
+        get { return $this->onResolvedHandler ??= new EventHandler(Resolved::class); }
+    }
+
+    /**
+     * @var EventHandler<Injecting>
+     */
+    public EventHandler $onInjecting {
+        get { return $this->onInjectingHandler ??= new EventHandler(Injecting::class); }
+    }
+
+    /**
+     * @var EventHandler<Injected>
+     */
+    public EventHandler $onInjected {
+        get { return $this->onInjectedHandler ??= new EventHandler(Injected::class); }
+    }
 
     /**
      * @param Injector|null $injector
@@ -80,11 +107,11 @@ class Container implements ContainerInterface
             return $entry->getInstance();
         }
 
-        $this->onResolving?->emit(new Resolving($id, $entry->getLifetime()));
+        $this->onResolvingHandler?->emit(new Resolving($id, $entry->getLifetime()));
 
         $instance = $entry->getInstance();
 
-        $this->onResolved?->emit(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
+        $this->onResolvedHandler?->emit(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
 
         return $instance;
     }
@@ -251,11 +278,11 @@ class Container implements ContainerInterface
      */
     public function inject(string $class, array $args = []): object
     {
-        $this->onInjecting?->emit(new Injecting($class));
+        $this->onInjectingHandler?->emit(new Injecting($class));
 
         $instance = $this->injector->create($class, $args);
 
-        $this->onInjected?->emit(new Injected($class, $instance));
+        $this->onInjectedHandler?->emit(new Injected($class, $instance));
 
         return $instance;
     }
@@ -278,48 +305,5 @@ class Container implements ContainerInterface
     public function call(Closure $closure, mixed $args = []): mixed
     {
         return $this->injector->invoke($closure, $args);
-    }
-
-    /**
-     * Set a callback which is called when a class is resolving.
-     *
-     * @param Closure(Resolving): mixed $callback
-     * @return void
-     */
-    public function onResolving(Closure $callback): void
-    {
-        ($this->onResolving ??= new EventHandler(Resolving::class))->append(new CallbackListener($callback));
-    }
-
-    /**
-     * Set a callback which is called when a class is resolved.
-     *
-     * @param Closure(Resolved): mixed $callback
-     * @return void
-     */
-    public function onResolved(Closure $callback): void
-    {
-        ($this->onResolved ??= new EventHandler(Resolved::class))->append(new CallbackListener($callback));
-    }
-
-    /**
-     * Set a callback which is called when a class is injecting.
-     *
-     * @param Closure(Injecting): mixed $callback
-     * @return void
-     */
-    public function onInjecting(Closure $callback): void
-    {
-        ($this->onInjecting ??= new EventHandler(Injecting::class))->append(new CallbackListener($callback));
-    }
-    /**
-     * Set a callback which is called when a class is injected.
-     *
-     * @param Closure(Injected): mixed $callback
-     * @return void
-     */
-    public function onInjected(Closure $callback): void
-    {
-        ($this->onInjected ??= new EventHandler(Injected::class))->append(new CallbackListener($callback));
     }
 }

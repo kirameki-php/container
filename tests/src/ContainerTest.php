@@ -480,7 +480,7 @@ final class ContainerTest extends TestCase
 
     public function test_onResolving(): void
     {
-        $this->container->onResolving(function (Resolving $event): void {
+        $this->container->onResolving->on(function (Resolving $event): void {
             $this->assertSame(DateTime::class, $event->id);
             $this->assertSame(Lifetime::Singleton, $event->lifetime);
         });
@@ -493,7 +493,7 @@ final class ContainerTest extends TestCase
     {
         $now = new DateTime();
 
-        $this->container->onResolved(function (Resolved $event) use ($now): void {
+        $this->container->onResolved->on(function (Resolved $event) use ($now): void {
             $this->assertSame(DateTime::class, $event->id);
             $this->assertSame($now, $event->instance);
         });
@@ -504,7 +504,7 @@ final class ContainerTest extends TestCase
 
     public function test_onInjecting(): void
     {
-        $this->container->onInjecting(function (Injecting $event): void {
+        $this->container->onInjecting->on(function (Injecting $event): void {
             $this->assertSame(Variadic::class, $event->class);
         });
 
@@ -513,7 +513,7 @@ final class ContainerTest extends TestCase
 
     public function test_onInjected(): void
     {
-        $this->container->onInjected(function (Injected $event): void {
+        $this->container->onInjected->on(function (Injected $event): void {
             $this->assertSame(Variadic::class, $event->class);
             $this->assertInstanceOf(Variadic::class, $event->instance);
         });

@@ -45,20 +45,20 @@ class TestCase extends BaseTestCase
         parent::setUp();
         $this->container = new Container();
 
-        $this->container->onResolving(function (Resolving $event) {
+        $this->container->onResolving->on(function (Resolving $event) {
             $this->countResolving[$event->id] ??= 0;
             ++$this->countResolving[$event->id];
         });
-        $this->container->onResolved(function (Resolved $event) {
+        $this->container->onResolved->on(function (Resolved $event) {
             $this->countResolved[$event->id] ??= 0;
             ++$this->countResolved[$event->id];
         });
 
-        $this->container->onInjecting(function (Injecting $event) {
+        $this->container->onInjecting->on(function (Injecting $event) {
             $this->countInjecting[$event->class] ??= 0;
             ++$this->countInjecting[$event->class];
         });
-        $this->container->onInjected(function (Injected $event) {
+        $this->container->onInjected->on(function (Injected $event) {
             $this->countInjected[$event->class] ??= 0;
             ++$this->countInjected[$event->class];
         });
