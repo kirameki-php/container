@@ -10,7 +10,7 @@ use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\InjectionException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use Kirameki\Container\Lifetime;
-use Kirameki\Core\Exceptions\LogicException;
+use Kirameki\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
 use Tests\Kirameki\Container\Sample\Builtin;

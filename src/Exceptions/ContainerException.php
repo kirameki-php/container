@@ -2,8 +2,8 @@
 
 namespace Kirameki\Container\Exceptions;
 
-use Kirameki\Core\Exceptions\LogicException;
+use Kirameki\Exceptions\LogicException;
 
-class ContainerException extends LogicException
+abstract class ContainerException extends LogicException
 {
 }
