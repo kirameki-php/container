@@ -22,7 +22,7 @@ class Entry
         protected readonly Container $container,
         public readonly string $id,
         protected ?Closure $resolver = null,
-        protected Lifetime $lifetime = Lifetime::Undefined,
+        public Lifetime $lifetime = Lifetime::Undefined { get => $this->lifetime; },
         protected array $extenders = [],
         protected ?object $instance = null,
     )
@@ -59,7 +59,7 @@ class Entry
      * @param object $instance
      * @return void
      */
-    protected function setInstance(object $instance): void
+    public function setInstance(object $instance): void
     {
         $this->instance = $instance;
     }
@@ -140,14 +140,6 @@ class Entry
     public function isCached(): bool
     {
         return $this->instance !== null;
-    }
-
-    /**
-     * @return Lifetime
-     */
-    public function getLifetime(): Lifetime
-    {
-        return $this->lifetime;
     }
 
     /**

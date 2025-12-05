@@ -55,28 +55,28 @@ class Container implements ContainerInterface
      * @var EventHandler<Resolving>
      */
     public EventHandler $onResolving {
-        get { return $this->onResolvingHandler ??= new EventHandler(Resolving::class); }
+        get => $this->onResolvingHandler ??= new EventHandler(Resolving::class);
     }
 
     /**
      * @var EventHandler<Resolved>
      */
     public EventHandler $onResolved {
-        get { return $this->onResolvedHandler ??= new EventHandler(Resolved::class); }
+        get => $this->onResolvedHandler ??= new EventHandler(Resolved::class);
     }
 
     /**
      * @var EventHandler<Injecting>
      */
     public EventHandler $onInjecting {
-        get { return $this->onInjectingHandler ??= new EventHandler(Injecting::class); }
+        get => $this->onInjectingHandler ??= new EventHandler(Injecting::class);
     }
 
     /**
      * @var EventHandler<Injected>
      */
     public EventHandler $onInjected {
-        get { return $this->onInjectedHandler ??= new EventHandler(Injected::class); }
+        get => $this->onInjectedHandler ??= new EventHandler(Injected::class);
     }
 
     /**
@@ -107,11 +107,11 @@ class Container implements ContainerInterface
             return $entry->getInstance();
         }
 
-        $this->onResolvingHandler?->emit(new Resolving($id, $entry->getLifetime()));
+        $this->onResolvingHandler?->emit(new Resolving($id, $entry->lifetime));
 
         $instance = $entry->getInstance();
 
-        $this->onResolvedHandler?->emit(new Resolved($id, $entry->getLifetime(), $instance, $entry->isCached()));
+        $this->onResolvedHandler?->emit(new Resolved($id, $entry->lifetime, $instance, $entry->isCached()));
 
         return $instance;
     }
@@ -163,6 +163,21 @@ class Container implements ContainerInterface
     public function singleton(string $id, Closure $resolver): void
     {
         $this->set($id, $resolver, Lifetime::Singleton);
+    }
+
+    /**
+     * Register a given class as a singleton.
+     *
+     * The given instance will be returned for all subsequent resolutions.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry>|string $id
+     * @param TEntry $instance
+     * @return void
+     */
+    public function instance(string $id, object $instance): void
+    {
+        $this->setEntry($id)->setInstance($instance);
     }
 
     /**

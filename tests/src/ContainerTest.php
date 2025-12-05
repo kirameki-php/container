@@ -520,4 +520,18 @@ final class ContainerTest extends TestCase
 
         $this->container->make(Variadic::class);
     }
+
+    public function test_instance(): void
+    {
+        $now = new DateTime();
+        $basic = new Basic($now, 42);
+        $this->container->instance(Basic::class, $basic);
+
+        $resolved = $this->container->get(Basic::class);
+        $this->assertSame($basic, $resolved);
+        $this->assertTotalResolvingCount(0);
+        $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(0);
+        $this->assertTotalInjectedCount(0);
+    }
 }

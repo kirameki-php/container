@@ -8,3 +8,6 @@
 
 # OS related files
 .DS_Store
+
+# IDEs
+.idea/copilot.*.xml
