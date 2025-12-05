@@ -49,7 +49,7 @@ class Entry
         $instance = $this->instance ?? $this->resolve();
 
         if (in_array($this->lifetime, [Lifetime::Scoped, Lifetime::Singleton], true)) {
-            $this->setInstance($instance);
+            $this->instance = $instance;
         }
 
         return $instance;
@@ -62,6 +62,7 @@ class Entry
     public function setInstance(object $instance): void
     {
         $this->instance = $instance;
+        $this->lifetime = Lifetime::Singleton;
     }
 
     /**
