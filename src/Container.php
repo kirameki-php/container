@@ -208,7 +208,7 @@ class Container implements ContainerInterface
      */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->entries) && $this->entries[$id]->isResolvable();
+        return array_key_exists($id, $this->entries);
     }
 
     /**
