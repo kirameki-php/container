@@ -196,12 +196,13 @@ final class ContainerTest extends TestCase
         $this->container->get(DateTime::class);
     }
 
-    public function test_unsetScopedEntries(): void
+    public function test_unsetScopedInstances(): void
     {
         $this->container->scoped(DateTime::class, static fn() => new DateTime());
         $this->assertTrue($this->container->has(DateTime::class));
-        $this->container->unsetScopedEntries();
-        $this->assertFalse($this->container->has(DateTime::class));
+        $this->container->unsetScopedInstances();
+        $this->assertTrue($this->container->has(DateTime::class));
+        $this->assertFalse($this->container->getEntry(DateTime::class)->isCached());
     }
 
     public function test_make_with_bound_class(): void

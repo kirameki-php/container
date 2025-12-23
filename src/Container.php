@@ -233,10 +233,10 @@ class Container implements ContainerInterface
      *
      * @return void
      */
-    public function unsetScopedEntries(): void
+    public function unsetScopedInstances(): void
     {
         foreach (array_keys($this->scopedEntryIds) as $id) {
-            $this->unset($id);
+            $this->getEntry($id)->unsetInstance();
         }
         $this->scopedEntryIds = [];
     }
