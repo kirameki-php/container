@@ -120,14 +120,17 @@ class Container implements ContainerInterface
      * Register a given id.
      *
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @param Closure(Container): TEntry $resolver
+     * @param class-string<TEntry> $id
+     * @param Closure(Container): TEntry|null $resolver
      * @param Lifetime $lifetime
      * @return void
      */
-    public function set(string $id, Closure $resolver, Lifetime $lifetime = Lifetime::Transient): void
+    public function set(string $id, ?Closure $resolver = null, Lifetime $lifetime = Lifetime::Transient): void
     {
-        $this->setEntry($id)->setResolver($resolver, $lifetime);
+        $this->setEntry($id)->setResolver(
+            $resolver ?? static fn(Container $c) => $c->inject($id),
+            $lifetime,
+        );
     }
 
     /**
@@ -138,11 +141,11 @@ class Container implements ContainerInterface
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
+     * @param class-string<TEntry> $id
      * @param Closure(Container): TEntry $resolver
      * @return void
      */
-    public function scoped(string $id, Closure $resolver): void
+    public function scoped(string $id, ?Closure $resolver = null): void
     {
         $this->set($id, $resolver, Lifetime::Scoped);
         $this->scopedEntryIds[$id] = null;
@@ -156,11 +159,11 @@ class Container implements ContainerInterface
      * Returns itself for chaining.
      *
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @param Closure(Container): TEntry $resolver
+     * @param class-string<TEntry> $id
+     * @param Closure(Container): TEntry|null $resolver
      * @return void
      */
-    public function singleton(string $id, Closure $resolver): void
+    public function singleton(string $id, ?Closure $resolver = null): void
     {
         $this->set($id, $resolver, Lifetime::Singleton);
     }
