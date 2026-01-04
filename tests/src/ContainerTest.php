@@ -16,6 +16,7 @@ use Tests\Kirameki\Container\Sample\BasicExtended;
 use Tests\Kirameki\Container\Sample\Builtin;
 use Tests\Kirameki\Container\Sample\Circular1;
 use Tests\Kirameki\Container\Sample\Circular2;
+use Tests\Kirameki\Container\Sample\InterfaceDefault;
 use Tests\Kirameki\Container\Sample\Intersect;
 use Tests\Kirameki\Container\Sample\NoType;
 use Tests\Kirameki\Container\Sample\NoTypeDefault;
@@ -25,6 +26,7 @@ use Tests\Kirameki\Container\Sample\SelfType;
 use Tests\Kirameki\Container\Sample\Union;
 use Tests\Kirameki\Container\Sample\Variadic;
 use TypeError;
+use function dump;
 
 final class ContainerTest extends TestCase
 {
@@ -234,7 +236,6 @@ final class ContainerTest extends TestCase
         $this->assertTotalResolvedCount(0);
         $this->assertTotalInjectingCount(1);
         $this->assertTotalInjectedCount(1);
-
     }
 
     public function test_make_with_parameters(): void
@@ -398,9 +399,10 @@ final class ContainerTest extends TestCase
 
     public function test_make_with_missing_parameter(): void
     {
-        $this->expectExceptionMessage('[DateTimeZone] Invalid type on argument: string $timezone. Built-in types are not allowed');
-        $this->expectException(LogicException::class);
-        $this->container->make(Basic::class, ['i' => 2]);
+        $data = $this->container->make(Basic::class, ['i' => 2]);
+        $this->assertInstanceOf(DateTime::class, $data->d);
+        $this->assertSame(2, $data->i);
+        $this->assertTotalInjectedCount(2);
     }
 
     public function test_make_with_circular_dependency(): void
@@ -411,6 +413,14 @@ final class ContainerTest extends TestCase
         ]));
         $this->expectException(LogicException::class);
         $this->container->make(Circular1::class);
+    }
+
+    public function test_make_with_interface_with_default(): void
+    {
+        $interfaceDefault = $this->container->make(InterfaceDefault::class);
+
+        $this->assertInstanceOf(DateTime::class, $interfaceDefault->d);
+        $this->assertTotalInjectedCount(1);
     }
 
     public function test_whenInjecting_with_provided_type(): void

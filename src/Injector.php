@@ -267,7 +267,19 @@ class Injector
 
         $paramClass = $this->revealClass($declaredClass, $type->getName());
 
-        return $injections[$paramClass] ?? $this->container->make($paramClass);
+        if (array_key_exists($paramClass, $injections)) {
+            return $injections[$paramClass];
+        }
+
+        if ($this->container->has($paramClass)) {
+            return $this->container->get($paramClass);
+        }
+
+        if (class_exists($paramClass) && !$param->isDefaultValueAvailable()) {
+            return $this->container->make($paramClass);
+        }
+
+        return null;
     }
 
     /**
