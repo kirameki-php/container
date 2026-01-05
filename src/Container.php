@@ -174,7 +174,7 @@ class Container implements ContainerInterface
      * The given instance will be returned for all subsequent resolutions.
      *
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
+     * @param class-string<TEntry> $id
      * @param TEntry $instance
      * @return void
      */
@@ -188,7 +188,8 @@ class Container implements ContainerInterface
      *
      * Returns **true** if entry is found, **false** otherwise.
      *
-     * @param string $id
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
      * @return bool
      */
     public function unset(string $id): bool
@@ -199,6 +200,20 @@ class Container implements ContainerInterface
             return true;
         }
         return false;
+    }
+
+    /**
+     * Delete the given entry and return the instance of the entry.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return TEntry
+     */
+    public function pull(string $id): object
+    {
+        $instance = $this->get($id);
+        $this->unset($id);
+        return $instance;
     }
 
     /**

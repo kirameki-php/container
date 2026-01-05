@@ -545,4 +545,81 @@ final class ContainerTest extends TestCase
         $this->assertTotalInjectingCount(0);
         $this->assertTotalInjectedCount(0);
     }
+
+    public function test_pull_with_instance(): void
+    {
+        $basic = new Basic(new DateTime(), 42);
+        $this->container->instance(Basic::class, $basic);
+
+        $pulled = $this->container->pull(Basic::class);
+
+        $this->assertSame($basic, $pulled);
+        $this->assertFalse($this->container->has(Basic::class));
+        $this->assertTotalResolvingCount(0);
+        $this->assertTotalResolvedCount(0);
+        $this->assertTotalInjectingCount(0);
+        $this->assertTotalInjectedCount(0);
+    }
+
+    public function test_pull_with_transient(): void
+    {
+        $this->container->set(DateTime::class, static fn() => new DateTime());
+
+        $pulled = $this->container->pull(DateTime::class);
+
+        $this->assertInstanceOf(DateTime::class, $pulled);
+        $this->assertFalse($this->container->has(DateTime::class));
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
+        $this->assertTotalInjectedCount(0);
+    }
+
+    public function test_pull_with_singleton(): void
+    {
+        $this->container->singleton(DateTime::class, static fn() => new DateTime());
+
+        $pulled = $this->container->pull(DateTime::class);
+
+        $this->assertInstanceOf(DateTime::class, $pulled);
+        $this->assertFalse($this->container->has(DateTime::class));
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
+        $this->assertTotalInjectedCount(0);
+    }
+
+    public function test_pull_with_scoped(): void
+    {
+        $this->container->scoped(DateTime::class, static fn() => new DateTime());
+
+        $pulled = $this->container->pull(DateTime::class);
+
+        $this->assertInstanceOf(DateTime::class, $pulled);
+        $this->assertFalse($this->container->has(DateTime::class));
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(0);
+        $this->assertTotalInjectedCount(0);
+    }
+
+    public function test_pull_not_registered(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(DateTime::class . ' is not registered.');
+        $this->container->pull(DateTime::class);
+    }
+
+    public function test_pull_multiple_times(): void
+    {
+        $this->container->singleton(DateTime::class, static fn() => new DateTime());
+
+        $pulled1 = $this->container->pull(DateTime::class);
+        $this->assertInstanceOf(DateTime::class, $pulled1);
+        $this->assertFalse($this->container->has(DateTime::class));
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(DateTime::class . ' is not registered.');
+        $this->container->pull(DateTime::class);
+    }
 }
