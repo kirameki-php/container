@@ -7,7 +7,6 @@ use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
 use Kirameki\Container\Events\Resolving;
-use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Event\EventHandler;
 use Psr\Container\ContainerInterface;
@@ -16,21 +15,6 @@ use function array_keys;
 
 class Container implements ContainerInterface
 {
-    /**
-     * @var Injector
-     */
-    protected readonly Injector $injector;
-
-    /**
-     * @var array<string, Entry>
-     */
-    protected array $entries = [];
-
-    /**
-     * @var array<string, null>
-     */
-    protected array $scopedEntryIds = [];
-
     /**
      * @var EventHandler<Resolving>|null
      */
@@ -80,11 +64,15 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param Injector|null $injector
+     * @param Injector $injector
+     * @param array<string, Entry> $entries
+     * @param array<string, null> $scopedEntryIds
      */
-    public function __construct(?Injector $injector = null)
-    {
-        $this->injector = $injector ?? new Injector($this);
+    public function __construct(
+        protected readonly Injector $injector,
+        protected array $entries = [],
+        protected array $scopedEntryIds = [],
+    ) {
     }
 
     /**
@@ -104,12 +92,12 @@ class Container implements ContainerInterface
         $entry = $this->getEntry($id);
 
         if ($entry->isCached()) {
-            return $entry->getInstance();
+            return $entry->getInstance($this);
         }
 
         $this->onResolvingHandler?->emit(new Resolving($id, $entry->lifetime));
 
-        $instance = $entry->getInstance();
+        $instance = $entry->getInstance($this);
 
         $this->onResolvedHandler?->emit(new Resolved($id, $entry->lifetime, $instance, $entry->isCached()));
 
@@ -117,70 +105,45 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Register a given id.
+     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
      *
      * @template TEntry of object
      * @param class-string<TEntry> $id
-     * @param Closure(Container): TEntry|null $resolver
-     * @param Lifetime $lifetime
-     * @return void
+     * @param array<array-key, mixed> $args
+     * @return TEntry
      */
-    public function set(string $id, ?Closure $resolver = null, Lifetime $lifetime = Lifetime::Transient): void
+    public function make(string $id, array $args = []): object
     {
-        $this->setEntry($id)->setResolver(
-            $resolver ?? static fn(Container $c) => $c->inject($id),
-            $lifetime,
-        );
+        return $this->has($id) && $args === []
+            ? $this->get($id)
+            : $this->inject($id, $args);
     }
 
     /**
-     * Register a given class as a singleton.
-     *
-     * Singletons will cache the result upon resolution.
-     *
-     * Returns itself for chaining.
-     *
      * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(Container): TEntry $resolver
-     * @return void
+     * @param class-string<TEntry> $class
+     * @param array<array-key, mixed> $args
+     * @return TEntry
      */
-    public function scoped(string $id, ?Closure $resolver = null): void
+    public function inject(string $class, array $args = []): object
     {
-        $this->set($id, $resolver, Lifetime::Scoped);
-        $this->scopedEntryIds[$id] = null;
+        $this->onInjectingHandler?->emit(new Injecting($class));
+
+        $instance = $this->injector->create($this, $class, $args);
+
+        $this->onInjectedHandler?->emit(new Injected($class, $instance));
+
+        return $instance;
     }
 
     /**
-     * Register a given class as a singleton.
-     *
-     * Singletons will cache the result upon resolution.
-     *
-     * Returns itself for chaining.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(Container): TEntry|null $resolver
-     * @return void
+     * @param Closure $closure
+     * @param array<array-key, mixed> $args
+     * @return mixed
      */
-    public function singleton(string $id, ?Closure $resolver = null): void
+    public function call(Closure $closure, mixed $args = []): mixed
     {
-        $this->set($id, $resolver, Lifetime::Singleton);
-    }
-
-    /**
-     * Register a given class as a singleton.
-     *
-     * The given instance will be returned for all subsequent resolutions.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param TEntry $instance
-     * @return void
-     */
-    public function instance(string $id, object $instance): void
-    {
-        $this->setEntry($id)->setInstance($instance);
+        return $this->injector->invoke($this, $closure, $args);
     }
 
     /**
@@ -230,28 +193,11 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Extend a registered class.
-     *
-     * The given Closure must return an instance of the original class or else Exception is thrown.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @param Closure(TEntry, Container): TEntry $extender
-     * @return $this
-     */
-    public function extend(string $id, Closure $extender): static
-    {
-        $entry = $this->entries[$id] ?? $this->setEntry($id);
-        $entry->extend($extender);
-        return $this;
-    }
-
-    /**
-     * Unset all scoped entries.
+     * clear all scoped entries.
      *
      * @return void
      */
-    public function unsetScopedInstances(): void
+    public function clearScoped(): void
     {
         foreach (array_keys($this->scopedEntryIds) as $id) {
             $this->getEntry($id)->unsetInstance();
@@ -271,72 +217,5 @@ class Container implements ContainerInterface
             ]);
         }
         return $this->entries[$id];
-    }
-
-    /**
-     * @param string $id
-     * @return Entry
-     */
-    protected function setEntry(string $id): Entry
-    {
-        if (array_key_exists($id, $this->entries)) {
-            throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
-                'class' => $id,
-                'existingEntry' => $this->entries[$id],
-            ]);
-        }
-        return $this->entries[$id] = new Entry($this, $id);
-    }
-
-    /**
-     * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
-     *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param array<array-key, mixed> $args
-     * @return TEntry
-     */
-    public function make(string $id, array $args = []): object
-    {
-        return $this->has($id) && $args === []
-            ? $this->get($id)
-            : $this->inject($id, $args);
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @param array<array-key, mixed> $args
-     * @return TEntry
-     */
-    public function inject(string $class, array $args = []): object
-    {
-        $this->onInjectingHandler?->emit(new Injecting($class));
-
-        $instance = $this->injector->create($class, $args);
-
-        $this->onInjectedHandler?->emit(new Injected($class, $instance));
-
-        return $instance;
-    }
-
-    /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
-     * @return ContextProvider
-     */
-    public function whenInjecting(string $class): ContextProvider
-    {
-        return $this->injector->setContext($class, new ContextProvider($class));
-    }
-
-    /**
-     * @param Closure $closure
-     * @param array<array-key, mixed> $args
-     * @return mixed
-     */
-    public function call(Closure $closure, mixed $args = []): mixed
-    {
-        return $this->injector->invoke($closure, $args);
     }
 }

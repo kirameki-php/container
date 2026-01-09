@@ -11,7 +11,6 @@ class Injecting extends Event
      */
     public function __construct(
         public readonly string $class,
-    )
-    {
+    ) {
     }
 }

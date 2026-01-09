@@ -13,8 +13,7 @@ class ContextProvider
         protected string $class,
         protected ?array $provided = null,
         protected ?array $arguments = null,
-    )
-    {
+    ) {
     }
 
     /**

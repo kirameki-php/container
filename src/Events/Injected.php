@@ -13,7 +13,6 @@ class Injected extends Event
     public function __construct(
         public readonly string $class,
         public readonly mixed $instance,
-    )
-    {
+    ) {
     }
 }

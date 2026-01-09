@@ -14,7 +14,6 @@ class Resolving extends Event
     public function __construct(
         public readonly string $id,
         public readonly Lifetime $lifetime,
-    )
-    {
+    ) {
     }
 }

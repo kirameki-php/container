@@ -3,6 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use Kirameki\Container\Container;
+use Kirameki\Container\ContainerBuilder;
 use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
@@ -13,9 +14,9 @@ use function array_sum;
 class TestCase extends BaseTestCase
 {
     /**
-     * @var Container
+     * @var ContainerBuilder
      */
-    protected Container $container;
+    protected ContainerBuilder $builder;
 
     /**
      * @var array<string, int>
@@ -43,22 +44,28 @@ class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->container = new Container();
+        $this->builder = new ContainerBuilder();
+    }
 
-        $this->container->onResolving->do(function (Resolving $event) {
+    /**
+     * @param Container $container
+     * @return void
+     */
+    protected function addCallbackCounters(Container $container): void
+    {
+        $container->onResolving->do(function (Resolving $event) {
             $this->countResolving[$event->id] ??= 0;
             ++$this->countResolving[$event->id];
         });
-        $this->container->onResolved->do(function (Resolved $event) {
+        $container->onResolved->do(function (Resolved $event) {
             $this->countResolved[$event->id] ??= 0;
             ++$this->countResolved[$event->id];
         });
-
-        $this->container->onInjecting->do(function (Injecting $event) {
+        $container->onInjecting->do(function (Injecting $event) {
             $this->countInjecting[$event->class] ??= 0;
             ++$this->countInjecting[$event->class];
         });
-        $this->container->onInjected->do(function (Injected $event) {
+        $container->onInjected->do(function (Injected $event) {
             $this->countInjected[$event->class] ??= 0;
             ++$this->countInjected[$event->class];
         });

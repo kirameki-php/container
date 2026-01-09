@@ -18,7 +18,6 @@ class Resolved extends Event
         public readonly Lifetime $lifetime,
         public readonly mixed $instance,
         public readonly bool $cached,
-    )
-    {
+    ) {
     }
 }

@@ -11,22 +11,19 @@ use function is_a;
 class Entry
 {
     /**
-     * @param Container $container
-     * @param string $id
+     * @param class-string $id
      * @param Closure(Container): object|null $resolver
      * @param Lifetime $lifetime
      * @param list<Closure(mixed, Container): mixed> $extenders
      * @param object|null $instance
      */
     public function __construct(
-        protected readonly Container $container,
         public readonly string $id,
         protected ?Closure $resolver = null,
         public Lifetime $lifetime = Lifetime::Undefined { get => $this->lifetime; },
         protected array $extenders = [],
         protected ?object $instance = null,
-    )
-    {
+    ) {
     }
 
     /**
@@ -42,11 +39,12 @@ class Entry
     }
 
     /**
+     * @param Container $container
      * @return object
      */
-    public function getInstance(): object
+    public function getInstance(Container $container): object
     {
-        $instance = $this->instance ?? $this->resolve();
+        $instance = $this->instance ?? $this->resolve($container);
 
         if (in_array($this->lifetime, [Lifetime::Scoped, Lifetime::Singleton], true)) {
             $this->instance = $instance;
@@ -90,18 +88,13 @@ class Entry
     public function extend(Closure $extender): void
     {
         $this->extenders[] = $extender;
-
-        /** @var TEntry|null $instance */
-        $instance = $this->instance;
-        if ($instance !== null) {
-            $this->instance = $this->applyExtender($instance, $extender);
-        }
     }
 
     /**
+     * @param Container $container
      * @return object
      */
-    protected function resolve(): object
+    protected function resolve(Container $container): object
     {
         if ($this->resolver === null) {
             throw new ResolverNotFoundException("{$this->id} is not set.", [
@@ -109,11 +102,12 @@ class Entry
             ]);
         }
 
-        $instance = ($this->resolver)($this->container);
+        $instance = ($this->resolver)($container);
         $this->assertInherited($instance);
 
         foreach ($this->extenders as $extender) {
-            $instance = $this->applyExtender($instance, $extender);
+            $instance = $extender($instance, $container);
+            $this->assertInherited($instance);
         }
 
         return $instance;
@@ -141,19 +135,6 @@ class Entry
     public function isCached(): bool
     {
         return $this->instance !== null;
-    }
-
-    /**
-     * @template TEntry of object
-     * @param TEntry $instance
-     * @param Closure(TEntry, Container): TEntry $extender
-     * @return TEntry
-     */
-    protected function applyExtender(object $instance, Closure $extender): object
-    {
-        $instance = $extender($instance, $this->container);
-        $this->assertInherited($instance);
-        return $instance;
     }
 
     /**
