@@ -261,7 +261,9 @@ class Injector
                 $type instanceof ReflectionUnionType => 'Union types',
                 $type instanceof ReflectionIntersectionType => 'Intersection types',
                 $type instanceof ReflectionNamedType && $type->isBuiltin() => 'Built-in types',
+                // @codeCoverageIgnoreStart
                 default => 'Unknown type',
+                // @codeCoverageIgnoreEnd
             };
             throw new InjectionException("[{$className}] Invalid type on argument: {$typeName} \${$paramName}. {$typeCategory} are not allowed.", [
                 'declaredClass' => $declaredClass,

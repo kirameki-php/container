@@ -3,6 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
+use Kirameki\Container\Container;
 use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
@@ -28,6 +29,16 @@ use TypeError;
 
 final class ContainerTest extends TestCase
 {
+    public function test___construct(): void
+    {
+        $container = $this->builder->build();
+
+        $this->assertInstanceOf(Container::class, $container);
+        $this->assertTrue($container->has(Container::class));
+        $this->assertSame($container, $container->get(Container::class));
+    }
+
+
     public function test_has(): void
     {
         $this->builder->set(DateTime::class, static fn() => new DateTime());
@@ -71,6 +82,24 @@ final class ContainerTest extends TestCase
         $this->assertTrue($container->has(DateTime::class));
         $this->assertTotalResolvingCount(1);
         $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(2);
+        $this->assertTotalInjectedCount(2);
+    }
+
+    public function test_clearScoped(): void
+    {
+        $this->builder->scoped(DateTime::class, static fn() => new DateTime());
+        $container = $this->builder->build();
+        $this->addCallbackCounters($container);
+
+        $basic1 = $container->make(Basic::class);
+        $container->clearScoped();
+        $basic2 = $container->make(Basic::class);
+
+        $this->assertNotSame($basic2->d, $basic1->d);
+        $this->assertTrue($container->has(DateTime::class));
+        $this->assertTotalResolvingCount(2);
+        $this->assertTotalResolvedCount(2);
         $this->assertTotalInjectingCount(2);
         $this->assertTotalInjectedCount(2);
     }

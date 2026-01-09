@@ -5,8 +5,7 @@
   "license": "MIT",
   "require": {
     "php": ">= 8.4",
-    "kirameki/utils": "dev-main",
-    "psr/container": "^2"
+    "kirameki/utils": "dev-main"
   },
   "require-dev": {
     "phpstan/phpstan": "^2",

@@ -8,27 +8,30 @@ use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use function in_array;
 use function is_a;
 
+/**
+ * @template T of object = object
+ */
 class Entry
 {
     /**
-     * @param class-string $id
-     * @param Closure(Container): object|null $resolver
+     * @param class-string<T> $id
+     * @param Closure(Container): T|null $resolver
      * @param Lifetime $lifetime
-     * @param list<Closure(mixed, Container): mixed> $extenders
-     * @param object|null $instance
+     * @param T|null $instance
+     * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
         public readonly string $id,
         protected ?Closure $resolver = null,
         public Lifetime $lifetime = Lifetime::Undefined { get => $this->lifetime; },
-        protected array $extenders = [],
         protected ?object $instance = null,
+        protected array $extenders = [],
     ) {
     }
 
     /**
      * @internal
-     * @param Closure(Container): object $resolver
+     * @param Closure(Container): T $resolver
      * @param Lifetime $lifetime
      * @return void
      */
@@ -40,7 +43,7 @@ class Entry
 
     /**
      * @param Container $container
-     * @return object
+     * @return T
      */
     public function getInstance(Container $container): object
     {
@@ -54,7 +57,7 @@ class Entry
     }
 
     /**
-     * @param object $instance
+     * @param T $instance
      * @return void
      */
     public function setInstance(object $instance): void
@@ -81,8 +84,7 @@ class Entry
     /**
      * Extender will be executed immediately if the instance already exists.
      *
-     * @template TEntry of object
-     * @param Closure(TEntry, Container): TEntry $extender
+     * @param Closure(T, Container): T $extender
      * @return void
      */
     public function extend(Closure $extender): void
@@ -92,7 +94,7 @@ class Entry
 
     /**
      * @param Container $container
-     * @return object
+     * @return T
      */
     protected function resolve(Container $container): object
     {

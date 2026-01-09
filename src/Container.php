@@ -9,11 +9,10 @@ use Kirameki\Container\Events\Resolved;
 use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Event\EventHandler;
-use Psr\Container\ContainerInterface;
 use function array_key_exists;
 use function array_keys;
 
-class Container implements ContainerInterface
+class Container
 {
     /**
      * @var EventHandler<Resolving>|null
@@ -65,14 +64,16 @@ class Container implements ContainerInterface
 
     /**
      * @param Injector $injector
-     * @param array<string, Entry> $entries
-     * @param array<string, null> $scopedEntryIds
+     * @param array<class-string, Entry> $entries
+     * @param array<class-string, null> $scopedEntryIds
      */
     public function __construct(
         protected readonly Injector $injector,
         protected array $entries = [],
         protected array $scopedEntryIds = [],
     ) {
+        // Register itself.
+        $this->entries[self::class] = new Entry(self::class, null, Lifetime::Singleton, $this);
     }
 
     /**
@@ -84,8 +85,8 @@ class Container implements ContainerInterface
      * Returns the resolved instance.
      *
      * @template TEntry of object
-     * @param class-string<TEntry>|string $id
-     * @return ($id is class-string<TEntry> ? TEntry : object)
+     * @param class-string<TEntry> $id
+     * @return TEntry
      */
     public function get(string $id): mixed
     {
@@ -184,7 +185,7 @@ class Container implements ContainerInterface
      *
      * Returns **true** if bound, **false** otherwise.
      *
-     * @param string $id
+     * @param class-string $id
      * @return bool
      */
     public function has(string $id): bool
@@ -206,8 +207,9 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param string $id
-     * @return Entry
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return Entry<TEntry>
      */
     public function getEntry(string $id): Entry
     {

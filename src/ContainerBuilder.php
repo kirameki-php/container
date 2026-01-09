@@ -3,20 +3,15 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Container\Events\Injected;
-use Kirameki\Container\Events\Injecting;
-use Kirameki\Container\Events\Resolved;
-use Kirameki\Container\Events\Resolving;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
-use Kirameki\Event\EventHandler;
 use function array_key_exists;
 
 class ContainerBuilder
 {
     /**
      * @param Injector $injector
-     * @param array<string, Entry> $entries
-     * @param array<string, null> $scopedEntryIds
+     * @param array<class-string, Entry<object>> $entries
+     * @param array<class-string, null> $scopedEntryIds
      */
     public function __construct(
         protected Injector $injector = new Injector(),
@@ -138,6 +133,7 @@ class ContainerBuilder
     public function extend(string $id, Closure $extender): static
     {
         $entry = $this->entries[$id] ?? $this->setEntry($id);
+        // @phpstan-ignore argument.type
         $entry->extend($extender);
         return $this;
     }
@@ -155,7 +151,7 @@ class ContainerBuilder
     /**
      * @template TEntry of object
      * @param class-string<TEntry> $id
-     * @return Entry
+     * @return Entry<TEntry>
      */
     protected function setEntry(string $id): Entry
     {
