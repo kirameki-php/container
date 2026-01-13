@@ -13,6 +13,7 @@ jobs:
       run: docker compose run --quiet-pull --rm app composer ci-test
     - uses: php-actions/phpstan@v3
       with:
+        php_version: 8.5
         memory_limit: 1G
     - uses: codecov/codecov-action@v3
       with:
