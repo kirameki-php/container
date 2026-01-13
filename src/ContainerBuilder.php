@@ -7,12 +7,12 @@ use Closure;
 class ContainerBuilder
 {
     /**
-     * @param Injector $injector
      * @param EntryCollection $entries
+     * @param Injector $injector
      */
     public function __construct(
-        protected Injector $injector = new Injector(),
         protected EntryCollection $entries = new EntryCollection(),
+        protected Injector $injector = new Injector(),
     ) {
     }
 
