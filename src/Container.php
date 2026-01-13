@@ -7,10 +7,7 @@ use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
 use Kirameki\Container\Events\Resolving;
-use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Event\EventHandler;
-use function array_key_exists;
-use function array_keys;
 
 class Container
 {
@@ -64,13 +61,11 @@ class Container
 
     /**
      * @param Injector $injector
-     * @param array<class-string, Entry> $entries
-     * @param array<class-string, null> $scopedEntryIds
+     * @param EntryCollection $entries
      */
     public function __construct(
         protected readonly Injector $injector,
-        protected array $entries = [],
-        protected array $scopedEntryIds = [],
+        protected EntryCollection $entries = new EntryCollection(),
     ) {
         // Register itself.
         $this->entries[self::class] = new Entry(self::class, null, Lifetime::Singleton, $this);
@@ -160,7 +155,6 @@ class Container
     {
         if ($this->has($id)) {
             unset($this->entries[$id]);
-            unset($this->scopedEntryIds[$id]);
             return true;
         }
         return false;
@@ -190,20 +184,17 @@ class Container
      */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->entries);
+        return isset($this->entries[$id]);
     }
 
     /**
      * clear all scoped entries.
      *
-     * @return void
+     * @return int
      */
-    public function clearScoped(): void
+    public function clearScoped(): int
     {
-        foreach (array_keys($this->scopedEntryIds) as $id) {
-            $this->getEntry($id)->unsetInstance();
-        }
-        $this->scopedEntryIds = [];
+        return $this->entries->clearScoped();
     }
 
     /**
@@ -213,11 +204,6 @@ class Container
      */
     public function getEntry(string $id): Entry
     {
-        if (!array_key_exists($id, $this->entries)) {
-            throw new EntryNotFoundException("{$id} is not registered.", [
-                'class' => $id,
-            ]);
-        }
         return $this->entries[$id];
     }
 }

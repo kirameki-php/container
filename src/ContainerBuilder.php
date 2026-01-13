@@ -3,20 +3,16 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Container\Exceptions\DuplicateEntryException;
-use function array_key_exists;
 
 class ContainerBuilder
 {
     /**
      * @param Injector $injector
-     * @param array<class-string, Entry<object>> $entries
-     * @param array<class-string, null> $scopedEntryIds
+     * @param EntryCollection $entries
      */
     public function __construct(
         protected Injector $injector = new Injector(),
-        protected array $entries = [],
-        protected array $scopedEntryIds = [],
+        protected EntryCollection $entries = new EntryCollection(),
     ) {
     }
 
@@ -31,7 +27,8 @@ class ContainerBuilder
      */
     public function set(string $id, ?Closure $resolver = null, Lifetime $lifetime = Lifetime::Transient): void
     {
-        $this->setEntry($id)->setResolver(
+        $this->entries[$id] = new Entry(
+            $id,
             $resolver ?? static fn(Container $c) => $c->inject($id),
             $lifetime,
         );
@@ -52,7 +49,6 @@ class ContainerBuilder
     public function scoped(string $id, ?Closure $resolver = null): void
     {
         $this->set($id, $resolver, Lifetime::Scoped);
-        $this->scopedEntryIds[$id] = null;
     }
 
     /**
@@ -84,7 +80,7 @@ class ContainerBuilder
      */
     public function instance(string $id, object $instance): void
     {
-        $this->setEntry($id)->setInstance($instance);
+        $this->entries[$id] = new Entry($id, null, Lifetime::Singleton, $instance);
     }
 
     /**
@@ -100,7 +96,6 @@ class ContainerBuilder
     {
         if ($this->has($id)) {
             unset($this->entries[$id]);
-            unset($this->scopedEntryIds[$id]);
             return true;
         }
         return false;
@@ -117,7 +112,7 @@ class ContainerBuilder
      */
     public function has(string $id): bool
     {
-        return array_key_exists($id, $this->entries);
+        return isset($this->entries[$id]);
     }
 
     /**
@@ -132,7 +127,7 @@ class ContainerBuilder
      */
     public function extend(string $id, Closure $extender): static
     {
-        $entry = $this->entries[$id] ?? $this->setEntry($id);
+        $entry = $this->entries[$id] ??= new Entry($id);
         // @phpstan-ignore argument.type
         $entry->extend($extender);
         return $this;
@@ -149,26 +144,10 @@ class ContainerBuilder
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return Entry<TEntry>
-     */
-    protected function setEntry(string $id): Entry
-    {
-        if (array_key_exists($id, $this->entries)) {
-            throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
-                'class' => $id,
-                'existingEntry' => $this->entries[$id],
-            ]);
-        }
-        return $this->entries[$id] = new Entry($id);
-    }
-
-    /**
      * @return Container
      */
     public function build(): Container
     {
-        return new Container($this->injector, $this->entries, $this->scopedEntryIds);
+        return new Container($this->injector, $this->entries);
     }
 }

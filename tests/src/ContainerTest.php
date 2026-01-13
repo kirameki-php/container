@@ -26,6 +26,7 @@ use Tests\Kirameki\Container\Sample\SelfType;
 use Tests\Kirameki\Container\Sample\Union;
 use Tests\Kirameki\Container\Sample\Variadic;
 use TypeError;
+use function dump;
 
 final class ContainerTest extends TestCase
 {
@@ -93,7 +94,7 @@ final class ContainerTest extends TestCase
         $this->addCallbackCounters($container);
 
         $basic1 = $container->make(Basic::class);
-        $container->clearScoped();
+        $this->assertSame(1, $container->clearScoped());
         $basic2 = $container->make(Basic::class);
 
         $this->assertNotSame($basic2->d, $basic1->d);
