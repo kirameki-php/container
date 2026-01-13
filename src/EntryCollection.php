@@ -3,6 +3,7 @@
 namespace Kirameki\Container;
 
 use ArrayAccess;
+use Countable;
 use Kirameki\Container\Entry as Entry;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
@@ -12,7 +13,7 @@ use function array_keys;
 /**
  * @implements ArrayAccess<class-string, Entry>
  */
-class EntryCollection implements ArrayAccess
+class EntryCollection implements ArrayAccess, Countable
 {
     /**
      * @param array<class-string, Entry<object>> $entries
@@ -22,6 +23,14 @@ class EntryCollection implements ArrayAccess
         protected array $entries = [],
         protected array $scopedEntryIds = [],
     ) {
+    }
+
+    /**
+     * @return int
+     */
+    public function count(): int
+    {
+        return count($this->entries);
     }
 
     public function offsetExists(mixed $offset): bool
