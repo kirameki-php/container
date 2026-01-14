@@ -78,7 +78,7 @@ class EntryCollection implements Countable
      * @template TEntry of object
      * @param class-string<TEntry> $id
      * @param Lifetime $lifetime
-     * @param Closure(Container): TEntry $resolver
+     * @param Closure(Container): TEntry|null $resolver
      * @param TEntry|null $instance
      * @return void
      */

@@ -8,6 +8,33 @@ use Tests\Kirameki\Container\Sample\NoType;
 
 class EntryTest extends TestCase
 {
+    public function test_isInstantiable_initiallyFalse(): void
+    {
+        $entry = new Entry(NoType::class);
+        $this->assertFalse($entry->isInstantiable());
+    }
+
+    public function test_isInstantiable_afterSetResolver(): void
+    {
+        $entry = new Entry(NoType::class);
+        $entry->setResolver(fn() => new NoType(0), Lifetime::Transient);
+        $this->assertTrue($entry->isInstantiable());
+    }
+
+    public function test_isInstantiable_afterExtend(): void
+    {
+        $entry = new Entry(NoType::class);
+        $entry->extend(fn(NoType $instance) => new NoType(1));
+        $this->assertFalse($entry->isInstantiable());
+    }
+
+    public function test_isInstantiable_afterSetInstance(): void
+    {
+        $entry = new Entry(NoType::class);
+        $entry->setInstance(fn() => new NoType(1));
+        $this->assertTrue($entry->isInstantiable());
+    }
+
     public function test_isResolvable_initiallyFalse(): void
     {
         $entry = new Entry(NoType::class);

@@ -118,6 +118,14 @@ class Entry
     /**
      * @return bool
      */
+    public function isInstantiable(): bool
+    {
+        return $this->resolver !== null || $this->instance !== null;
+    }
+
+    /**
+     * @return bool
+     */
     public function isResolvable(): bool
     {
         return $this->resolver !== null;
