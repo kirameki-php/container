@@ -55,60 +55,58 @@ class EntryCollection implements Countable
     }
 
     /**
-     * @param class-string $id
-     * @return Entry|null
+     * @template T of object
+     * @param class-string<T> $id
+     * @return Entry<T>|null
      */
     public function getOrNull(string $id): ?Entry
     {
+        /** @var Entry<T>|null */
         return $this->entries[$id] ?? null;
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return Entry<TEntry>
+     * @template T of object
+     * @param class-string<T> $id
+     * @return Entry<T>
      */
-    public function getOrNew(string $id): Entry
+    protected function getOrNew(string $id): Entry
     {
-        /** @var Entry<TEntry> */
+        /** @var Entry<T> */
         return $this->entries[$id] ??= new Entry($id);
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Lifetime $lifetime
-     * @param Closure(Container): TEntry|null $resolver
-     * @param TEntry|null $instance
+     * @template T of object
+     * @param Entry<T> $entry
      * @return void
      */
-    public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null, ?object $instance = null): void
+    public function set(Entry $entry): void
     {
-        if (array_key_exists($id, $this->entries)) {
+        $id = $entry->id;
+        $existing = $this->getOrNull($id);
+
+        if ($existing?->isInstantiable()) {
             throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
                 'class' => $id,
                 'existingEntry' => $this->entries[$id],
             ]);
         }
 
-        $entry = $this->getOrNew($id);
-        if ($resolver !== null) {
-            $entry->setResolver($resolver, $lifetime);
-        }
+        // Entry exists but has no resolver or instance, merge the new entry into existing one.
+        $existing?->applyTo($entry);
 
-        if ($instance !== null) {
-            $entry->setInstance($instance);
-        }
+        $this->entries[$id] = $entry;
 
-        if ($lifetime === Lifetime::Scoped) {
+        if ($entry->lifetime === Lifetime::Scoped) {
             $this->scopedEntryIds[$id] = null;
         }
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(TEntry, Container): TEntry $extender
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Closure(T, Container): T $extender
      * @return void
      */
     public function extend(string $id, Closure $extender): void

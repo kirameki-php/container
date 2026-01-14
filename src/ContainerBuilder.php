@@ -28,7 +28,7 @@ class ContainerBuilder
      */
     public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null): static
     {
-        $this->entries->set($id, $lifetime, $resolver ?? $this->getDefaultResolver($id));
+        $this->entries->set(new Entry($id, $lifetime, $resolver ?? $this->getDefaultResolver($id)));
         return $this;
     }
 
@@ -88,7 +88,7 @@ class ContainerBuilder
      */
     public function instance(string $id, object $instance): static
     {
-        $this->entries->set($id, Lifetime::Singleton, null, $instance);
+        $this->entries->set(new Entry($id, Lifetime::Singleton, null, $instance));
         return $this;
     }
 

@@ -93,6 +93,26 @@ class Entry
     }
 
     /**
+     * @internal for internal merging purposes only
+     * @param Entry<T> $other
+     * @return void
+     */
+    public function applyTo(Entry $other): void
+    {
+        if ($this->resolver !== null) {
+            $other->setResolver($this->resolver, $this->lifetime);
+        }
+
+        if ($this->instance !== null) {
+            $other->setInstance($this->instance);
+        }
+
+        foreach ($this->extenders as $extender) {
+            $other->extend($extender);
+        }
+    }
+
+    /**
      * @param Container $container
      * @return T
      */

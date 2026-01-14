@@ -68,7 +68,7 @@ class Container
         protected EntryCollection $entries = new EntryCollection(),
     ) {
         // Register itself.
-        $this->entries->set(self::class, Lifetime::Singleton, null, $this);
+        $this->entries->set(new Entry(self::class, Lifetime::Singleton, null, $this));
     }
 
     /**
