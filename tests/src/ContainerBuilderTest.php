@@ -3,9 +3,9 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
-use Kirameki\Container\ContainerBuilder;
 use Kirameki\Container\Exceptions\InjectionException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
+use Kirameki\Container\Lifetime;
 use Kirameki\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;
 use Tests\Kirameki\Container\Sample\BasicExtended;
@@ -13,7 +13,6 @@ use Tests\Kirameki\Container\Sample\Builtin;
 use Tests\Kirameki\Container\Sample\NoType;
 use Tests\Kirameki\Container\Sample\NoTypeDefault;
 use Tests\Kirameki\Container\Sample\Variadic;
-use TypeError;
 
 final class ContainerBuilderTest extends TestCase
 {
@@ -21,14 +20,14 @@ final class ContainerBuilderTest extends TestCase
     {
         $this->assertFalse($this->builder->has(DateTime::class));
 
-        $this->builder->set(DateTime::class, static fn() => new DateTime());
+        $this->builder->transient(DateTime::class, static fn() => new DateTime());
 
         $this->assertTrue($this->builder->has(DateTime::class));
     }
 
     public function test_unset(): void
     {
-        $this->builder->set(DateTime::class, static fn() => new DateTime());
+        $this->builder->transient(DateTime::class, static fn() => new DateTime());
 
         // Check existence and delete
         $this->assertTrue($this->builder->has(DateTime::class));
@@ -39,6 +38,44 @@ final class ContainerBuilderTest extends TestCase
 
         // Try Deleting twice
         $this->assertFalse($this->builder->unset(DateTime::class));
+    }
+
+    public function test_set(): void
+    {
+        $this->builder->set(DateTime::class, Lifetime::Scoped, static fn() => new DateTime());
+        $container = $this->builder->build();
+        $this->addCallbackCounters($container);
+
+        $basic1 = $container->make(Basic::class);
+        $basic2 = $container->make(Basic::class);
+
+        $this->assertSame($basic2->d, $basic1->d);
+        $this->assertTrue($this->builder->has(DateTime::class));
+        $this->assertTrue($container->has(DateTime::class));
+
+        $this->assertTotalResolvingCount(1);
+        $this->assertTotalResolvedCount(1);
+        $this->assertTotalInjectingCount(2);
+        $this->assertTotalInjectedCount(2);
+    }
+
+    public function test_transient(): void
+    {
+        $this->builder->transient(DateTime::class, static fn() => new DateTime());
+        $container = $this->builder->build();
+        $this->addCallbackCounters($container);
+
+        $basic1 = $container->make(Basic::class);
+        $basic2 = $container->make(Basic::class);
+
+        $this->assertNotSame($basic2->d, $basic1->d);
+        $this->assertTrue($this->builder->has(DateTime::class));
+        $this->assertTrue($container->has(DateTime::class));
+
+        $this->assertTotalResolvingCount(2);
+        $this->assertTotalResolvedCount(2);
+        $this->assertTotalInjectingCount(2);
+        $this->assertTotalInjectedCount(2);
     }
 
     public function test_scoped(): void
@@ -97,7 +134,7 @@ final class ContainerBuilderTest extends TestCase
 
     public function test_extend(): void
     {
-        $this->builder->set(Basic::class, fn() => new Basic(new DateTime()));
+        $this->builder->transient(Basic::class, fn() => new Basic(new DateTime()));
         $this->builder->extend(Basic::class, fn() => new BasicExtended());
         $container = $this->builder->build();
         $this->addCallbackCounters($container);
@@ -144,7 +181,7 @@ final class ContainerBuilderTest extends TestCase
     {
         $this->expectExceptionMessage('Expected: instance of ' . DateTime::class . '. Got: ' . NoTypeDefault::class . '.');
         $this->expectException(LogicException::class);
-        $this->builder->set(DateTime::class, fn() => new DateTime());
+        $this->builder->transient(DateTime::class, fn() => new DateTime());
         $this->builder->extend(DateTime::class, fn() => new NoTypeDefault());
         $container = $this->builder->build();
         $container->get(DateTime::class);

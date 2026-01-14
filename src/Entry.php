@@ -15,15 +15,15 @@ class Entry
 {
     /**
      * @param class-string<T> $id
-     * @param Closure(Container): T|null $resolver
      * @param Lifetime $lifetime
+     * @param Closure(Container): T|null $resolver
      * @param T|null $instance
      * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
         public readonly string $id,
+        public Lifetime $lifetime = Lifetime::Transient,
         protected ?Closure $resolver = null,
-        public Lifetime $lifetime = Lifetime::Undefined { get => $this->lifetime; },
         protected ?object $instance = null,
         protected array $extenders = [],
     ) {

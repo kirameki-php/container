@@ -68,7 +68,7 @@ class Container
         protected EntryCollection $entries = new EntryCollection(),
     ) {
         // Register itself.
-        $this->entries[self::class] = new Entry(self::class, null, Lifetime::Singleton, $this);
+        $this->entries->set(self::class, Lifetime::Singleton, null, $this);
     }
 
     /**
@@ -154,7 +154,7 @@ class Container
     public function unset(string $id): bool
     {
         if ($this->has($id)) {
-            unset($this->entries[$id]);
+            $this->entries->remove($id);
             return true;
         }
         return false;
@@ -184,7 +184,7 @@ class Container
      */
     public function has(string $id): bool
     {
-        return isset($this->entries[$id]);
+        return $this->entries->has($id);
     }
 
     /**
@@ -204,6 +204,6 @@ class Container
      */
     public function getEntry(string $id): Entry
     {
-        return $this->entries[$id];
+        return $this->entries->get($id);
     }
 }

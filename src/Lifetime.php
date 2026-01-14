@@ -4,7 +4,6 @@ namespace Kirameki\Container;
 
 enum Lifetime
 {
-    case Undefined;
     case Transient;
     case Scoped;
     case Singleton;

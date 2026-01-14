@@ -2,18 +2,14 @@
 
 namespace Kirameki\Container;
 
-use ArrayAccess;
+use Closure;
 use Countable;
-use Kirameki\Container\Entry as Entry;
 use Kirameki\Container\Exceptions\DuplicateEntryException;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use function array_key_exists;
 use function array_keys;
 
-/**
- * @implements ArrayAccess<class-string, Entry>
- */
-class EntryCollection implements ArrayAccess, Countable
+class EntryCollection implements Countable
 {
     /**
      * @param array<class-string, Entry<object>> $entries
@@ -33,59 +29,101 @@ class EntryCollection implements ArrayAccess, Countable
         return count($this->entries);
     }
 
-    public function offsetExists(mixed $offset): bool
+    /**
+     * @param class-string $id
+     * @return bool
+     */
+    public function has(mixed $id): bool
     {
-        return array_key_exists($offset, $this->entries);
+        return array_key_exists($id, $this->entries);
     }
 
     /**
-     * @param class-string $offset
+     * @param class-string $id
      * @return Entry
      */
-    public function offsetGet(mixed $offset): Entry
+    public function get(string $id): Entry
     {
-        if (isset($this->entries[$offset])) {
-            return $this->entries[$offset];
+        $entry = $this->getOrNull($id);
+        if ($entry !== null) {
+            return $entry;
         }
 
-        throw new EntryNotFoundException("{$offset} is not registered.", [
-            'class' => $offset,
+        throw new EntryNotFoundException("{$id} is not registered.", [
+            'class' => $id,
         ]);
     }
 
     /**
-     * @param class-string $offset
-     * @param mixed $value
+     * @param class-string $id
+     * @return Entry|null
+     */
+    public function getOrNull(string $id): ?Entry
+    {
+        return $this->entries[$id] ?? null;
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return Entry<TEntry>
+     */
+    public function getOrNew(string $id): Entry
+    {
+        /** @var Entry<TEntry> */
+        return $this->entries[$id] ??= new Entry($id);
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Lifetime $lifetime
+     * @param Closure(Container): TEntry $resolver
+     * @param TEntry|null $instance
      * @return void
      */
-    public function offsetSet(mixed $offset, mixed $value): void
+    public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null, ?object $instance = null): void
     {
-        if (array_key_exists($offset, $this->entries)) {
-            throw new DuplicateEntryException("Cannot register class: {$offset}. Entry already exists.", [
-                'class' => $offset,
-                'existingEntry' => $this->entries[$offset],
+        if (array_key_exists($id, $this->entries)) {
+            throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
+                'class' => $id,
+                'existingEntry' => $this->entries[$id],
             ]);
         }
 
-        if (!$value instanceof Entry) {
-            throw new EntryNotFoundException("{$offset} is not an instance of Entry.");
+        $entry = $this->getOrNew($id);
+        if ($resolver !== null) {
+            $entry->setResolver($resolver, $lifetime);
         }
 
-        $this->entries[$offset] = $value;
+        if ($instance !== null) {
+            $entry->setInstance($instance);
+        }
 
-        if ($value->lifetime === Lifetime::Scoped) {
-            $this->scopedEntryIds[$offset] = null;
+        if ($lifetime === Lifetime::Scoped) {
+            $this->scopedEntryIds[$id] = null;
         }
     }
 
     /**
-     * @param class-string $offset
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Closure(TEntry, Container): TEntry $extender
      * @return void
      */
-    public function offsetUnset(mixed $offset): void
+    public function extend(string $id, Closure $extender): void
     {
-        unset($this->entries[$offset]);
-        unset($this->scopedEntryIds[$offset]);
+        $this->getOrNew($id)->extend($extender);
+    }
+
+    /**
+     * @param class-string $id
+     * @return void
+     */
+    public function remove(mixed $id): void
+    {
+        unset($this->entries[$id]);
+        unset($this->scopedEntryIds[$id]);
     }
 
     /**
@@ -97,7 +135,7 @@ class EntryCollection implements ArrayAccess, Countable
     {
         $count = 0;
         foreach (array_keys($this->scopedEntryIds) as $id) {
-            $this[$id]->unsetInstance();
+            $this->get($id)->unsetInstance();
             $count++;
         }
         $this->scopedEntryIds = [];

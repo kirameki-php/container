@@ -18,74 +18,82 @@ class ContainerBuilder
 
     /**
      * Register a given id.
+     * Returns itself for chaining.
+     *
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @param Lifetime $lifetime
+     * @param Closure(Container): TEntry|null $resolver
+     * @return $this
+     */
+    public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null): static
+    {
+        $this->entries->set($id, $lifetime, $resolver ?? $this->getDefaultResolver($id));
+        return $this;
+    }
+
+    /**
+     * Register a given class as transient.
+     * Transient entries will create a new instance upon each resolution.
+     * Returns itself for chaining.
      *
      * @template TEntry of object
      * @param class-string<TEntry> $id
      * @param Closure(Container): TEntry|null $resolver
-     * @param Lifetime $lifetime
-     * @return void
+     * @return $this
      */
-    public function set(string $id, ?Closure $resolver = null, Lifetime $lifetime = Lifetime::Transient): void
+    public function transient(string $id, ?Closure $resolver = null): static
     {
-        $this->entries[$id] = new Entry(
-            $id,
-            $resolver ?? static fn(Container $c) => $c->inject($id),
-            $lifetime,
-        );
+        return $this->set($id, Lifetime::Transient, $resolver);
     }
 
     /**
      * Register a given class as a singleton.
-     *
      * Singletons will cache the result upon resolution.
-     *
      * Returns itself for chaining.
      *
      * @template TEntry of object
      * @param class-string<TEntry> $id
      * @param Closure(Container): TEntry $resolver
-     * @return void
+     * @return $this
      */
-    public function scoped(string $id, ?Closure $resolver = null): void
+    public function scoped(string $id, ?Closure $resolver = null): static
     {
-        $this->set($id, $resolver, Lifetime::Scoped);
+        return $this->set($id, Lifetime::Scoped, $resolver);
     }
 
     /**
      * Register a given class as a singleton.
-     *
      * Singletons will cache the result upon resolution.
-     *
      * Returns itself for chaining.
      *
      * @template TEntry of object
      * @param class-string<TEntry> $id
      * @param Closure(Container): TEntry|null $resolver
-     * @return void
+     * @return $this
      */
-    public function singleton(string $id, ?Closure $resolver = null): void
+    public function singleton(string $id, ?Closure $resolver = null): static
     {
-        $this->set($id, $resolver, Lifetime::Singleton);
+        return $this->set($id, Lifetime::Singleton, $resolver);
     }
 
     /**
      * Register a given class as a singleton.
-     *
      * The given instance will be returned for all subsequent resolutions.
      *
      * @template TEntry of object
      * @param class-string<TEntry> $id
      * @param TEntry $instance
-     * @return void
+     * @return $this
      */
-    public function instance(string $id, object $instance): void
+    public function instance(string $id, object $instance): static
     {
-        $this->entries[$id] = new Entry($id, null, Lifetime::Singleton, $instance);
+        $this->entries->set($id, Lifetime::Singleton, null, $instance);
+        return $this;
     }
 
     /**
      * Delete a given entry.
-     *
      * Returns **true** if entry is found, **false** otherwise.
      *
      * @template TEntry of object
@@ -95,7 +103,7 @@ class ContainerBuilder
     public function unset(string $id): bool
     {
         if ($this->has($id)) {
-            unset($this->entries[$id]);
+            $this->entries->remove($id);
             return true;
         }
         return false;
@@ -103,7 +111,6 @@ class ContainerBuilder
 
     /**
      * Check to see if a given class is bound to the container.
-     *
      * Returns **true** if bound, **false** otherwise.
      *
      * @template TEntry of object
@@ -112,12 +119,11 @@ class ContainerBuilder
      */
     public function has(string $id): bool
     {
-        return isset($this->entries[$id]);
+        return $this->entries->has($id);
     }
 
     /**
      * Extend a registered class.
-     *
      * The given Closure must return an instance of the original class or else Exception is thrown.
      *
      * @template TEntry of object
@@ -127,9 +133,7 @@ class ContainerBuilder
      */
     public function extend(string $id, Closure $extender): static
     {
-        $entry = $this->entries[$id] ??= new Entry($id);
-        // @phpstan-ignore argument.type
-        $entry->extend($extender);
+        $this->entries->extend($id, $extender);
         return $this;
     }
 
@@ -144,10 +148,22 @@ class ContainerBuilder
     }
 
     /**
+     * Build the container.
+     *
      * @return Container
      */
     public function build(): Container
     {
         return new Container($this->injector, $this->entries);
+    }
+
+    /**
+     * @template TEntry of object
+     * @param class-string<TEntry> $id
+     * @return Closure(Container): TEntry
+     */
+    public function getDefaultResolver(string $id): Closure
+    {
+        return static fn(Container $c) => $c->inject($id);
     }
 }

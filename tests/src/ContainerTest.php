@@ -42,7 +42,7 @@ final class ContainerTest extends TestCase
 
     public function test_has(): void
     {
-        $this->builder->set(DateTime::class, static fn() => new DateTime());
+        $this->builder->transient(DateTime::class, static fn() => new DateTime());
         $container = $this->builder->build();
 
         $this->assertTrue($container->has(DateTime::class));
@@ -50,7 +50,7 @@ final class ContainerTest extends TestCase
 
     public function test_unset(): void
     {
-        $this->builder->set(DateTime::class, static fn() => new DateTime());
+        $this->builder->transient(DateTime::class, static fn() => new DateTime());
         $container = $this->builder->build();
         $this->addCallbackCounters($container);
 
@@ -213,7 +213,7 @@ final class ContainerTest extends TestCase
     public function test_make_with_bound_parameter(): void
     {
         $now = new DateTime();
-        $this->builder->set(DateTime::class, static fn() => $now);
+        $this->builder->transient(DateTime::class, static fn() => $now);
         $container = $this->builder->build();
         $this->addCallbackCounters($container);
         $basic = $container->make(Basic::class);
@@ -324,7 +324,7 @@ final class ContainerTest extends TestCase
 
     public function test_make_with_nullable_type(): void
     {
-        $this->builder->set(DateTime::class, fn() => new DateTime());
+        $this->builder->transient(DateTime::class, fn() => new DateTime());
         $container = $this->builder->build();
         $this->addCallbackCounters($container);
 
@@ -438,7 +438,7 @@ final class ContainerTest extends TestCase
 
     public function test_call(): void
     {
-        $this->builder->set(Builtin::class, fn() => new Builtin(1));
+        $this->builder->transient(Builtin::class, fn() => new Builtin(1));
         $container = $this->builder->build();
         $this->addCallbackCounters($container);
 
@@ -534,7 +534,7 @@ final class ContainerTest extends TestCase
 
     public function test_pull_with_transient(): void
     {
-        $this->builder->set(DateTime::class, static fn() => new DateTime());
+        $this->builder->transient(DateTime::class, static fn() => new DateTime());
         $container = $this->builder->build();
         $this->addCallbackCounters($container);
 
