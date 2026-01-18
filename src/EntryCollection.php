@@ -68,17 +68,6 @@ class EntryCollection implements Countable
 
     /**
      * @template T of object
-     * @param class-string<T> $id
-     * @return Entry<T>
-     */
-    protected function getOrNew(string $id): Entry
-    {
-        /** @var Entry<T> */
-        return $this->entries[$id] ??= new Entry($id);
-    }
-
-    /**
-     * @template T of object
      * @param Entry<T> $entry
      * @return void
      */
@@ -112,17 +101,23 @@ class EntryCollection implements Countable
      */
     public function extend(string $id, Closure $extender): void
     {
-        $this->getOrNew($id)->extend($extender);
+        /** @var Entry<T> $entry */
+        $entry = $this->entries[$id] ??= new Entry($id);
+        $entry->extend($extender);
     }
 
     /**
      * @param class-string $id
-     * @return void
+     * @return bool
      */
-    public function remove(mixed $id): void
+    public function unset(mixed $id): bool
     {
-        unset($this->entries[$id]);
-        unset($this->scopedEntryIds[$id]);
+        if ($this->has($id)) {
+            unset($this->entries[$id]);
+            unset($this->scopedEntryIds[$id]);
+            return true;
+        }
+        return false;
     }
 
     /**

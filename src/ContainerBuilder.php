@@ -102,11 +102,7 @@ class ContainerBuilder
      */
     public function unset(string $id): bool
     {
-        if ($this->has($id)) {
-            $this->entries->remove($id);
-            return true;
-        }
-        return false;
+        return $this->entries->unset($id);
     }
 
     /**

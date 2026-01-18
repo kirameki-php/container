@@ -26,7 +26,6 @@ use Tests\Kirameki\Container\Sample\SelfType;
 use Tests\Kirameki\Container\Sample\Union;
 use Tests\Kirameki\Container\Sample\Variadic;
 use TypeError;
-use function dump;
 
 final class ContainerTest extends TestCase
 {

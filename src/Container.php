@@ -65,7 +65,7 @@ class Container
      */
     public function __construct(
         protected readonly Injector $injector,
-        protected EntryCollection $entries = new EntryCollection(),
+        protected EntryCollection $entries,
     ) {
         // Register itself.
         $this->entries->set(new Entry(self::class, Lifetime::Singleton, null, $this));
@@ -85,7 +85,7 @@ class Container
      */
     public function get(string $id): mixed
     {
-        $entry = $this->getEntry($id);
+        $entry = $this->entries->get($id);
 
         if ($entry->isCached()) {
             return $entry->getInstance($this);
@@ -152,11 +152,7 @@ class Container
      */
     public function unset(string $id): bool
     {
-        if ($this->has($id)) {
-            $this->entries->remove($id);
-            return true;
-        }
-        return false;
+        return $this->entries->unset($id);
     }
 
     /**
@@ -194,15 +190,5 @@ class Container
     public function clearScoped(): int
     {
         return $this->entries->clearScoped();
-    }
-
-    /**
-     * @template T of object
-     * @param class-string<T> $id
-     * @return Entry<T>
-     */
-    public function getEntry(string $id): Entry
-    {
-        return $this->entries->get($id);
     }
 }

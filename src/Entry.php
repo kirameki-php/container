@@ -5,7 +5,6 @@ namespace Kirameki\Container;
 use Closure;
 use Kirameki\Container\Exceptions\InvalidInstanceException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
-use function in_array;
 use function is_a;
 
 /**
@@ -30,18 +29,6 @@ class Entry
     }
 
     /**
-     * @internal
-     * @param Closure(Container): T $resolver
-     * @param Lifetime $lifetime
-     * @return void
-     */
-    public function setResolver(Closure $resolver, Lifetime $lifetime): void
-    {
-        $this->resolver = $resolver;
-        $this->lifetime = $lifetime;
-    }
-
-    /**
      * @param Container $container
      * @return T
      */
@@ -49,21 +36,11 @@ class Entry
     {
         $instance = $this->instance ?? $this->resolve($container);
 
-        if (in_array($this->lifetime, [Lifetime::Scoped, Lifetime::Singleton], true)) {
+        if ($this->lifetime !== Lifetime::Transient) {
             $this->instance = $instance;
         }
 
         return $instance;
-    }
-
-    /**
-     * @param T $instance
-     * @return void
-     */
-    public function setInstance(object $instance): void
-    {
-        $this->instance = $instance;
-        $this->lifetime = Lifetime::Singleton;
     }
 
     /**
@@ -99,13 +76,9 @@ class Entry
      */
     public function applyTo(Entry $other): void
     {
-        if ($this->resolver !== null) {
-            $other->setResolver($this->resolver, $this->lifetime);
-        }
-
-        if ($this->instance !== null) {
-            $other->setInstance($this->instance);
-        }
+        $other->lifetime = $this->lifetime;
+        $other->resolver = $this->resolver;
+        $other->instance = $this->instance;
 
         foreach ($this->extenders as $extender) {
             $other->extend($extender);
@@ -125,11 +98,16 @@ class Entry
         }
 
         $instance = ($this->resolver)($container);
-        $this->assertInherited($instance);
 
         foreach ($this->extenders as $extender) {
             $instance = $extender($instance, $container);
-            $this->assertInherited($instance);
+        }
+
+        if (!is_a($instance, $this->id)) {
+            throw new InvalidInstanceException("Expected: instance of {$this->id}. Got: " . $instance::class . '.', [
+                'this' => $this,
+                'instance' => $instance,
+            ]);
         }
 
         return $instance;
@@ -165,19 +143,5 @@ class Entry
     public function isCached(): bool
     {
         return $this->instance !== null;
-    }
-
-    /**
-     * @param mixed $instance
-     * @return void
-     */
-    protected function assertInherited(mixed $instance): void
-    {
-        if (!is_a($instance, $this->id)) {
-            throw new InvalidInstanceException("Expected: instance of {$this->id}. Got: " . $instance::class . '.', [
-                'this' => $this,
-                'instance' => $instance,
-            ]);
-        }
     }
 }
