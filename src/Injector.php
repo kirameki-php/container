@@ -49,11 +49,11 @@ class Injector
     /**
      * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
      *
-     * @template TEntry of object
+     * @template T of object
      * @param Container $container
-     * @param class-string<TEntry> $class
+     * @param class-string<T> $class
      * @param array<array-key, mixed> $args
-     * @return TEntry
+     * @return T
      */
     public function create(Container $container, string $class, array $args): object
     {

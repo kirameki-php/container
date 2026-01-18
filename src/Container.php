@@ -79,9 +79,9 @@ class Container
      *
      * Returns the resolved instance.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return TEntry
+     * @template T of object
+     * @param class-string<T> $id
+     * @return T
      */
     public function get(string $id): mixed
     {
@@ -103,10 +103,10 @@ class Container
     /**
      * Instantiate class and inject parameters if given class is not registered, or resolve if registered.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @template T of object
+     * @param class-string<T> $id
      * @param array<array-key, mixed> $args
-     * @return TEntry
+     * @return T
      */
     public function make(string $id, array $args = []): object
     {
@@ -116,10 +116,10 @@ class Container
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @template T of object
+     * @param class-string<T> $class
      * @param array<array-key, mixed> $args
-     * @return TEntry
+     * @return T
      */
     public function inject(string $class, array $args = []): object
     {
@@ -147,8 +147,7 @@ class Container
      *
      * Returns **true** if entry is found, **false** otherwise.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @param class-string $id
      * @return bool
      */
     public function unset(string $id): bool
@@ -163,9 +162,9 @@ class Container
     /**
      * Delete the given entry and return the instance of the entry.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return TEntry
+     * @template T of object
+     * @param class-string<T> $id
+     * @return T
      */
     public function pull(string $id): object
     {
@@ -198,9 +197,9 @@ class Container
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return Entry<TEntry>
+     * @template T of object
+     * @param class-string<T> $id
+     * @return Entry<T>
      */
     public function getEntry(string $id): Entry
     {

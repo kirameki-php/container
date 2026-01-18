@@ -39,8 +39,9 @@ class EntryCollection implements Countable
     }
 
     /**
-     * @param class-string $id
-     * @return Entry
+     * @template T of object
+     * @param class-string<T> $id
+     * @return Entry<T>
      */
     public function get(string $id): Entry
     {

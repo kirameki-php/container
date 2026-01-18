@@ -20,10 +20,10 @@ class ContainerBuilder
      * Register a given id.
      * Returns itself for chaining.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @template T of object
+     * @param class-string<T> $id
      * @param Lifetime $lifetime
-     * @param Closure(Container): TEntry|null $resolver
+     * @param Closure(Container): T|null $resolver
      * @return $this
      */
     public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null): static
@@ -37,9 +37,9 @@ class ContainerBuilder
      * Transient entries will create a new instance upon each resolution.
      * Returns itself for chaining.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(Container): TEntry|null $resolver
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Closure(Container): T|null $resolver
      * @return $this
      */
     public function transient(string $id, ?Closure $resolver = null): static
@@ -52,9 +52,9 @@ class ContainerBuilder
      * Singletons will cache the result upon resolution.
      * Returns itself for chaining.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(Container): TEntry $resolver
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Closure(Container): T $resolver
      * @return $this
      */
     public function scoped(string $id, ?Closure $resolver = null): static
@@ -67,9 +67,9 @@ class ContainerBuilder
      * Singletons will cache the result upon resolution.
      * Returns itself for chaining.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(Container): TEntry|null $resolver
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Closure(Container): T|null $resolver
      * @return $this
      */
     public function singleton(string $id, ?Closure $resolver = null): static
@@ -81,9 +81,9 @@ class ContainerBuilder
      * Register a given class as a singleton.
      * The given instance will be returned for all subsequent resolutions.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param TEntry $instance
+     * @template T of object
+     * @param class-string<T> $id
+     * @param T $instance
      * @return $this
      */
     public function instance(string $id, object $instance): static
@@ -96,8 +96,8 @@ class ContainerBuilder
      * Delete a given entry.
      * Returns **true** if entry is found, **false** otherwise.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @template T of object
+     * @param class-string<T> $id
      * @return bool
      */
     public function unset(string $id): bool
@@ -113,8 +113,8 @@ class ContainerBuilder
      * Check to see if a given class is bound to the container.
      * Returns **true** if bound, **false** otherwise.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
+     * @template T of object
+     * @param class-string<T> $id
      * @return bool
      */
     public function has(string $id): bool
@@ -126,9 +126,9 @@ class ContainerBuilder
      * Extend a registered class.
      * The given Closure must return an instance of the original class or else Exception is thrown.
      *
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @param Closure(TEntry, Container): TEntry $extender
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Closure(T, Container): T $extender
      * @return $this
      */
     public function extend(string $id, Closure $extender): static
@@ -138,8 +138,8 @@ class ContainerBuilder
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $class
+     * @template T of object
+     * @param class-string<T> $class
      * @return ContextProvider
      */
     public function whenInjecting(string $class): ContextProvider
@@ -158,9 +158,9 @@ class ContainerBuilder
     }
 
     /**
-     * @template TEntry of object
-     * @param class-string<TEntry> $id
-     * @return Closure(Container): TEntry
+     * @template T of object
+     * @param class-string<T> $id
+     * @return Closure(Container): T
      */
     public function getDefaultResolver(string $id): Closure
     {
