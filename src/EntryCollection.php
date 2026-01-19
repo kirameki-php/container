@@ -74,17 +74,13 @@ class EntryCollection implements Countable
     public function set(Entry $entry): void
     {
         $id = $entry->id;
-        $existing = $this->getOrNull($id);
 
-        if ($existing?->isInstantiable()) {
+        if ($this->has($id)) {
             throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
                 'class' => $id,
                 'existingEntry' => $this->entries[$id],
             ]);
         }
-
-        // Entry exists but has no resolver or instance, merge the new entry into existing one.
-        $existing?->applyTo($entry);
 
         $this->entries[$id] = $entry;
 
@@ -101,8 +97,14 @@ class EntryCollection implements Countable
      */
     public function extend(string $id, Closure $extender): void
     {
-        /** @var Entry<T> $entry */
-        $entry = $this->entries[$id] ??= new Entry($id);
+        $entry = $this->getOrNull($id);
+
+        if ($entry === null) {
+            throw new EntryNotFoundException("Cannot extend {$id}. Entry not found.", [
+                'class' => $id,
+            ]);
+        }
+
         $entry->extend($extender);
     }
 

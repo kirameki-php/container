@@ -21,7 +21,7 @@ class Entry
      */
     public function __construct(
         public readonly string $id,
-        public Lifetime $lifetime = Lifetime::Transient,
+        public readonly Lifetime $lifetime = Lifetime::Transient,
         protected ?Closure $resolver = null,
         protected ?object $instance = null,
         protected array $extenders = [],
@@ -67,22 +67,6 @@ class Entry
     public function extend(Closure $extender): void
     {
         $this->extenders[] = $extender;
-    }
-
-    /**
-     * @internal for internal merging purposes only
-     * @param Entry<T> $other
-     * @return void
-     */
-    public function applyTo(Entry $other): void
-    {
-        $other->lifetime = $this->lifetime;
-        $other->resolver = $this->resolver;
-        $other->instance = $this->instance;
-
-        foreach ($this->extenders as $extender) {
-            $other->extend($extender);
-        }
     }
 
     /**

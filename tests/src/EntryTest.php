@@ -61,8 +61,8 @@ class EntryTest extends TestCase
     public function test_isCached_after_getInstance_singleton(): void
     {
         $container = $this->builder->build();
-        $entry = new Entry(Lifetime::Singleton, fn() => new NoType(0));
-        $entry->getInstance(NoType::class, $container);
+        $entry = new Entry(NoType::class, Lifetime::Singleton, fn() => new NoType(0));
+        $entry->getInstance($container);
         $this->assertTrue($entry->isCached());
     }
 

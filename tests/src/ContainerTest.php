@@ -455,7 +455,7 @@ final class ContainerTest extends TestCase
 
         $container->onResolving->do(function (Resolving $event): void {
             $this->assertSame(DateTime::class, $event->id);
-            $this->assertSame(Lifetime::Singleton, $event->lifetime);
+            $this->assertSame(Lifetime::Singleton, $event->entry->lifetime);
         });
 
         $container->get(DateTime::class);

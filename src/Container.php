@@ -91,11 +91,11 @@ class Container
             return $entry->getInstance($this);
         }
 
-        $this->onResolvingHandler?->emit(new Resolving($id, $entry->lifetime));
+        $this->onResolvingHandler?->emit(new Resolving($id, $entry));
 
         $instance = $entry->getInstance($this);
 
-        $this->onResolvedHandler?->emit(new Resolved($id, $entry->lifetime, $instance, $entry->isCached()));
+        $this->onResolvedHandler?->emit(new Resolved($id, $entry, $instance));
 
         return $instance;
     }

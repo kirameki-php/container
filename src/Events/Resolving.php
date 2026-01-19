@@ -2,18 +2,18 @@
 
 namespace Kirameki\Container\Events;
 
-use Kirameki\Container\Lifetime;
+use Kirameki\Container\Entry;
 use Kirameki\Event\Event;
 
 class Resolving extends Event
 {
     /**
      * @param string $id
-     * @param Lifetime $lifetime
+     * @param Entry $entry
      */
     public function __construct(
         public readonly string $id,
-        public readonly Lifetime $lifetime,
+        public readonly Entry $entry,
     ) {
     }
 }

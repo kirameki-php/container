@@ -3,6 +3,7 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
+use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Container\Exceptions\InjectionException;
 use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use Kirameki\Container\Lifetime;
@@ -170,8 +171,8 @@ final class ContainerBuilderTest extends TestCase
 
     public function test_extend_nothing(): void
     {
-        $this->expectException(ResolverNotFoundException::class);
-        $this->expectExceptionMessage('DateTime is not set.');
+        $this->expectException(EntryNotFoundException::class);
+        $this->expectExceptionMessage('Cannot extend DateTime. Entry not found.');
         $this->builder->extend(DateTime::class, fn() => new DateTime());
         $container = $this->builder->build();
         $container->get(DateTime::class);
