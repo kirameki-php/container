@@ -68,7 +68,7 @@ class Container
         protected EntryCollection $entries,
     ) {
         // Register itself.
-        $this->entries->set(new Entry(self::class, Lifetime::Singleton, null, $this));
+        $this->entries->set(new FixedEntry(self::class, $this));
     }
 
     /**
@@ -83,11 +83,11 @@ class Container
      * @param class-string<T> $id
      * @return T
      */
-    public function get(string $id): mixed
+    public function get(string $id): object
     {
         $entry = $this->entries->get($id);
 
-        if ($entry->isCached()) {
+        if ($entry->isResolved()) {
             return $entry->getInstance($this);
         }
 

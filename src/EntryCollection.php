@@ -12,7 +12,7 @@ use function array_keys;
 class EntryCollection implements Countable
 {
     /**
-     * @param array<class-string, Entry<object>> $entries
+     * @param array<class-string, Entry> $entries
      * @param array<class-string, null> $scopedEntryIds
      */
     public function __construct(
@@ -131,7 +131,10 @@ class EntryCollection implements Countable
     {
         $count = 0;
         foreach (array_keys($this->scopedEntryIds) as $id) {
-            $this->get($id)->unsetInstance();
+            $entry = $this->get($id);
+            if ($entry instanceof LazyEntry) {
+                $entry->unsetInstance();
+            }
             $count++;
         }
         $this->scopedEntryIds = [];

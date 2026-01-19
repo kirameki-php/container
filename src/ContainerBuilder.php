@@ -28,7 +28,7 @@ class ContainerBuilder
      */
     public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null): static
     {
-        $this->entries->set(new Entry($id, $lifetime, $resolver ?? $this->getDefaultResolver($id)));
+        $this->entries->set(new LazyEntry($id, $lifetime, $resolver));
         return $this;
     }
 
@@ -88,7 +88,7 @@ class ContainerBuilder
      */
     public function instance(string $id, object $instance): static
     {
-        $this->entries->set(new Entry($id, Lifetime::Singleton, null, $instance));
+        $this->entries->set(new FixedEntry($id, $instance));
         return $this;
     }
 
@@ -151,15 +151,5 @@ class ContainerBuilder
     public function build(): Container
     {
         return new Container($this->injector, $this->entries);
-    }
-
-    /**
-     * @template T of object
-     * @param class-string<T> $id
-     * @return Closure(Container): T
-     */
-    public function getDefaultResolver(string $id): Closure
-    {
-        return static fn(Container $c) => $c->inject($id);
     }
 }

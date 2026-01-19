@@ -5,7 +5,6 @@ namespace Tests\Kirameki\Container;
 use DateTime;
 use Kirameki\Container\Exceptions\EntryNotFoundException;
 use Kirameki\Container\Exceptions\InjectionException;
-use Kirameki\Container\Exceptions\ResolverNotFoundException;
 use Kirameki\Container\Lifetime;
 use Kirameki\Exceptions\LogicException;
 use Tests\Kirameki\Container\Sample\Basic;

@@ -3,27 +3,20 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Container\Exceptions\InvalidInstanceException;
-use Kirameki\Container\Exceptions\ResolverNotFoundException;
-use function is_a;
 
 /**
  * @template T of object = object
  */
-class Entry
+abstract class Entry
 {
     /**
      * @param class-string<T> $id
      * @param Lifetime $lifetime
-     * @param Closure(Container): T|null $resolver
-     * @param T|null $instance
      * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
         public readonly string $id,
-        public readonly Lifetime $lifetime = Lifetime::Transient,
-        protected ?Closure $resolver = null,
-        protected ?object $instance = null,
+        public readonly Lifetime $lifetime,
         protected array $extenders = [],
     ) {
     }
@@ -32,31 +25,12 @@ class Entry
      * @param Container $container
      * @return T
      */
-    public function getInstance(Container $container): object
-    {
-        $instance = $this->instance ?? $this->resolve($container);
-
-        if ($this->lifetime !== Lifetime::Transient) {
-            $this->instance = $instance;
-        }
-
-        return $instance;
-    }
+    abstract public function getInstance(Container $container): object;
 
     /**
-     * Unset the instance if it exists.
-     * Returns **true** if the instance existed and was unset, **false** otherwise.
-     *
      * @return bool
      */
-    public function unsetInstance(): bool
-    {
-        if ($this->instance !== null) {
-            $this->instance = null;
-            return true;
-        }
-        return false;
-    }
+    abstract public function isResolved(): bool;
 
     /**
      * Extender will be executed immediately if the instance already exists.
@@ -70,62 +44,10 @@ class Entry
     }
 
     /**
-     * @param Container $container
-     * @return T
-     */
-    protected function resolve(Container $container): object
-    {
-        if ($this->resolver === null) {
-            throw new ResolverNotFoundException("{$this->id} is not set.", [
-                'this' => $this,
-            ]);
-        }
-
-        $instance = ($this->resolver)($container);
-
-        foreach ($this->extenders as $extender) {
-            $instance = $extender($instance, $container);
-        }
-
-        if (!is_a($instance, $this->id)) {
-            throw new InvalidInstanceException("Expected: instance of {$this->id}. Got: " . $instance::class . '.', [
-                'this' => $this,
-                'instance' => $instance,
-            ]);
-        }
-
-        return $instance;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isInstantiable(): bool
-    {
-        return $this->resolver !== null || $this->instance !== null;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isResolvable(): bool
-    {
-        return $this->resolver !== null;
-    }
-
-    /**
      * @return bool
      */
     public function isExtended(): bool
     {
         return $this->extenders !== [];
-    }
-
-    /**
-     * @return bool
-     */
-    public function isCached(): bool
-    {
-        return $this->instance !== null;
     }
 }
