@@ -149,7 +149,7 @@ class EntryCollection implements Countable
         $count = 0;
         foreach (array_keys($this->scopedEntryIds) as $id) {
             $entry = $this->get($id);
-            if ($entry instanceof EntryLazy) {
+            if ($entry instanceof LazyEntry) {
                 $entry->unsetInstance();
                 $count++;
             }

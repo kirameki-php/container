@@ -3,14 +3,13 @@
 namespace Kirameki\Container;
 
 use Closure;
-use Kirameki\Container\Exceptions\InvalidInstanceException;
 use Override;
 
 /**
  * @template T of object = object
  * @extends Entry<T>
  */
-class EntryLazy extends Entry
+class LazyEntry extends Entry
 {
     /**
      * @var T|null

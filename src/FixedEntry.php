@@ -9,7 +9,7 @@ use Override;
  * @template T of object = object
  * @extends Entry<T>
  */
-class EntryFixed extends Entry
+class FixedEntry extends Entry
 {
     /**
      * @param T $instance
