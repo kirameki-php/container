@@ -119,21 +119,6 @@ class ContainerBuilder
     }
 
     /**
-     * Extend a registered class.
-     * The given Closure must return an instance of the original class or else Exception is thrown.
-     *
-     * @template T of object
-     * @param class-string<T> $id
-     * @param Closure(T, Container): T $extender
-     * @return $this
-     */
-    public function extend(string $id, Closure $extender): static
-    {
-        $this->entries->extend($id, $extender);
-        return $this;
-    }
-
-    /**
      * @param class-string $id
      * @param class-string $target
      * @return $this

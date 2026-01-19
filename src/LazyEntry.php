@@ -19,14 +19,12 @@ class LazyEntry extends Entry
     /**
      * @param Lifetime $lifetime
      * @param Closure(Container): T $resolver
-     * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
         Lifetime $lifetime,
-        protected Closure $resolver,
-        array $extenders = [],
+        protected readonly Closure $resolver,
     ) {
-        parent::__construct($lifetime, $extenders);
+        parent::__construct($lifetime);
     }
 
     /**
@@ -35,7 +33,7 @@ class LazyEntry extends Entry
     #[Override]
     public function getInstance(Container $container): object
     {
-        $instance = $this->instance ?? $this->resolve($container);
+        $instance = $this->instance ?? ($this->resolver)($container);
 
         if ($this->lifetime !== Lifetime::Transient) {
             $this->instance = $instance;
@@ -60,33 +58,10 @@ class LazyEntry extends Entry
     }
 
     /**
-     * @param Container $container
-     * @return T
-     */
-    protected function resolve(Container $container): object
-    {
-        $instance = ($this->resolver)($container);
-        return $this->applyExtenders($instance, $container);
-    }
-
-    /**
      * @return bool
      */
     public function isResolved(): bool
     {
         return $this->instance !== null;
-    }
-
-    /**
-     * @param T $instance
-     * @param Container $container
-     * @return T
-     */
-    protected function applyExtenders(object $instance, Container $container): object
-    {
-        foreach ($this->extenders as $extender) {
-            $instance = $extender($instance, $container);
-        }
-        return $instance;
     }
 }

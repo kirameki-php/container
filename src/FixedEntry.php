@@ -13,13 +13,11 @@ class FixedEntry extends Entry
 {
     /**
      * @param T $instance
-     * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
         public object $instance,
-        array $extenders = [],
     ) {
-        parent::__construct(Lifetime::Singleton, $extenders);
+        parent::__construct(Lifetime::Singleton);
     }
 
     /**

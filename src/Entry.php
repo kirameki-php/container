@@ -11,11 +11,9 @@ abstract class Entry
 {
     /**
      * @param Lifetime $lifetime
-     * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
         public readonly Lifetime $lifetime,
-        protected array $extenders = [],
     ) {
     }
 
@@ -29,23 +27,4 @@ abstract class Entry
      * @return bool
      */
     abstract public function isResolved(): bool;
-
-    /**
-     * Extender will be executed immediately if the instance already exists.
-     *
-     * @param Closure(T, Container): T $extender
-     * @return void
-     */
-    public function extend(Closure $extender): void
-    {
-        $this->extenders[] = $extender;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isExtended(): bool
-    {
-        return $this->extenders !== [];
-    }
 }

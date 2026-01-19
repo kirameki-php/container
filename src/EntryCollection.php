@@ -89,25 +89,6 @@ class EntryCollection implements Countable
     }
 
     /**
-     * @template T of object
-     * @param class-string<T> $id
-     * @param Closure(T, Container): T $extender
-     * @return void
-     */
-    public function extend(string $id, Closure $extender): void
-    {
-        $entry = $this->getOrNull($id);
-
-        if ($entry === null) {
-            throw new EntryNotFoundException("Cannot extend {$id}. Entry not found.", [
-                'class' => $id,
-            ]);
-        }
-
-        $entry->extend($extender);
-    }
-
-    /**
      * @param class-string $id
      * @param class-string $target
      * @return void

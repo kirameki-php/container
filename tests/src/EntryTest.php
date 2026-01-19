@@ -8,19 +8,6 @@ use Tests\Kirameki\Container\Sample\NoType;
 
 class EntryTest extends TestCase
 {
-    public function test_isExtended_initially_false(): void
-    {
-        $entry = new LazyEntry(Lifetime::Transient, fn() => new NoType(0));
-        $this->assertFalse($entry->isExtended());
-    }
-
-    public function test_isExtended_after_extend(): void
-    {
-        $entry = new LazyEntry(Lifetime::Transient, fn() => new NoType(0));
-        $entry->extend(fn(NoType $instance) => new NoType(1));
-        $this->assertTrue($entry->isExtended());
-    }
-
     public function test_isResolved_initially_false(): void
     {
         $entry = new LazyEntry(Lifetime::Transient, fn() => new NoType(0));
@@ -69,18 +56,6 @@ class EntryTest extends TestCase
         $this->assertTrue($entry->isResolved());
         $this->assertTrue($entry->unsetInstance());
         $this->assertFalse($entry->isResolved());
-    }
-
-    public function test_unsetInstance_extended(): void
-    {
-        $container = $this->builder->build();
-        $entry = new LazyEntry(Lifetime::Singleton, fn() => new NoType(0));
-        $entry->extend(fn(NoType $instance) => new NoType(1));
-        $this->assertSame(1, $entry->getInstance($container)->a);
-        $this->assertTrue($entry->isResolved());
-        $this->assertTrue($entry->unsetInstance());
-        $this->assertFalse($entry->isResolved());
-        $this->assertTrue($entry->isExtended());
     }
 
     public function test_unsetInstance_scoped(): void

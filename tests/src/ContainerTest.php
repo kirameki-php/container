@@ -3,7 +3,6 @@
 namespace Tests\Kirameki\Container;
 
 use DateTime;
-use Kirameki\Container\Container;
 use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;

@@ -132,61 +132,6 @@ final class ContainerBuilderTest extends TestCase
         $this->builder->singleton(DateTime::class, static fn() => new DateTime());
     }
 
-    public function test_extend(): void
-    {
-        $this->builder->transient(Basic::class, fn() => new Basic(new DateTime()));
-        $this->builder->extend(Basic::class, fn() => new BasicExtended());
-        $container = $this->builder->build();
-        $this->addCallbackCounters($container);
-
-        $basic = $container->get(Basic::class);
-
-        $this->assertSame('2022-02-02', $basic->d->format('Y-m-d'));
-        $this->assertSame(100, $basic->i);
-
-        $this->assertTotalResolvingCount(1);
-        $this->assertTotalResolvedCount(1);
-        $this->assertTotalInjectingCount(0);
-        $this->assertTotalInjectedCount(0);
-    }
-
-    public function test_extend_resolved_singleton(): void
-    {
-        $this->builder->singleton(Basic::class, fn() => new Basic(new DateTime('1970-01-01')));
-        $this->builder->extend(Basic::class, fn() => new BasicExtended());
-        $container = $this->builder->build();
-        $this->addCallbackCounters($container);
-
-        $basic2 = $container->get(Basic::class);
-
-        $this->assertSame('2022-02-02', $basic2->d->format('Y-m-d'));
-        $this->assertSame(100, $basic2->i);
-
-        $this->assertTotalResolvingCount(1);
-        $this->assertTotalResolvedCount(1);
-        $this->assertTotalInjectingCount(0);
-        $this->assertTotalInjectedCount(0);
-    }
-
-    public function test_extend_nothing(): void
-    {
-        $this->expectException(EntryNotFoundException::class);
-        $this->expectExceptionMessage('Cannot extend DateTime. Entry not found.');
-        $this->builder->extend(DateTime::class, fn() => new DateTime());
-        $container = $this->builder->build();
-        $container->get(DateTime::class);
-    }
-
-    public function test_extend_invalid_return_type(): void
-    {
-        $this->expectExceptionMessage('Expected: instance of ' . DateTime::class . '. Got: ' . NoTypeDefault::class . '.');
-        $this->expectException(LogicException::class);
-        $this->builder->transient(DateTime::class, fn() => new DateTime());
-        $this->builder->extend(DateTime::class, fn() => new NoTypeDefault());
-        $container = $this->builder->build();
-        $container->get(DateTime::class);
-    }
-
     public function test_whenInjecting_with_provided_type(): void
     {
         $now = new DateTime();
