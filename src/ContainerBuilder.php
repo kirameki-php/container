@@ -28,7 +28,7 @@ class ContainerBuilder
      */
     public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null): static
     {
-        $this->entries->set(new LazyEntry($id, $lifetime, $resolver));
+        $this->entries->set(new EntryLazy($id, $lifetime, $resolver));
         return $this;
     }
 
@@ -88,7 +88,7 @@ class ContainerBuilder
      */
     public function instance(string $id, object $instance): static
     {
-        $this->entries->set(new FixedEntry($id, $instance));
+        $this->entries->set(new EntryFixed($id, $instance));
         return $this;
     }
 

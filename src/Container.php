@@ -68,7 +68,7 @@ class Container
         protected EntryCollection $entries,
     ) {
         // Register itself.
-        $this->entries->set(new FixedEntry(self::class, $this));
+        $this->entries->set(new EntryFixed(self::class, $this));
     }
 
     /**

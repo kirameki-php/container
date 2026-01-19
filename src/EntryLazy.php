@@ -10,7 +10,7 @@ use Override;
  * @template T of object = object
  * @extends Entry<T>
  */
-class LazyEntry extends Entry
+class EntryLazy extends Entry
 {
     /**
      * @var Closure(Container): T
