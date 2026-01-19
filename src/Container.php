@@ -60,12 +60,12 @@ class Container
     }
 
     /**
-     * @param Injector $injector
      * @param EntryCollection $entries
+     * @param Injector $injector
      */
     public function __construct(
-        protected readonly Injector $injector,
         protected EntryCollection $entries,
+        protected readonly Injector $injector,
     ) {
         // Register itself.
         $this->entries->set(new EntryFixed(self::class, $this));

@@ -150,6 +150,6 @@ class ContainerBuilder
      */
     public function build(): Container
     {
-        return new Container($this->injector, $this->entries);
+        return new Container($this->entries, $this->injector);
     }
 }
