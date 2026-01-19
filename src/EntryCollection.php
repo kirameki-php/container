@@ -68,13 +68,12 @@ class EntryCollection implements Countable
 
     /**
      * @template T of object
+     * @param class-string<T> $id
      * @param Entry<T> $entry
      * @return void
      */
-    public function set(Entry $entry): void
+    public function set(string $id, Entry $entry): void
     {
-        $id = $entry->id;
-
         if ($this->has($id)) {
             throw new DuplicateEntryException("Cannot register class: {$id}. Entry already exists.", [
                 'class' => $id,
@@ -106,6 +105,24 @@ class EntryCollection implements Countable
         }
 
         $entry->extend($extender);
+    }
+
+    /**
+     * @param class-string $id
+     * @param class-string $target
+     * @return void
+     */
+    public function aliasTo(string $id, string $target): void
+    {
+        $entry = $this->getOrNull($id);
+
+        if ($entry === null) {
+            throw new EntryNotFoundException("Cannot alias {$id} to {$target}. Entry not found.", [
+                'class' => $id,
+            ]);
+        }
+
+        $this->entries[$target] = $entry;
     }
 
     /**

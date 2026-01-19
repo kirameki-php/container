@@ -13,29 +13,21 @@ use Override;
 class EntryLazy extends Entry
 {
     /**
-     * @var Closure(Container): T
-     */
-    protected readonly Closure $resolver;
-
-    /**
      * @var T|null
      */
     protected ?object $instance = null;
 
     /**
-     * @param class-string<T> $id
      * @param Lifetime $lifetime
-     * @param Closure(Container): T|null $resolver
+     * @param Closure(Container): T $resolver
      * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
-        string $id,
         Lifetime $lifetime,
-        ?Closure $resolver = null,
+        protected Closure $resolver,
         array $extenders = [],
     ) {
-        parent::__construct($id, $lifetime, $extenders);
-        $this->resolver = $resolver ?? static fn (Container $c) => $c->inject($id);
+        parent::__construct($lifetime, $extenders);
     }
 
     /**
@@ -75,16 +67,7 @@ class EntryLazy extends Entry
     protected function resolve(Container $container): object
     {
         $instance = ($this->resolver)($container);
-        $instance = $this->applyExtenders($instance, $container);
-
-        if (!is_a($instance, $this->id)) {
-            throw new InvalidInstanceException("Expected: instance of {$this->id}. Got: " . $instance::class . '.', [
-                'this' => $this,
-                'instance' => $instance,
-            ]);
-        }
-
-        return $instance;
+        return $this->applyExtenders($instance, $container);
     }
 
     /**

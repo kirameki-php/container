@@ -7,7 +7,9 @@ use Kirameki\Container\Events\Injected;
 use Kirameki\Container\Events\Injecting;
 use Kirameki\Container\Events\Resolved;
 use Kirameki\Container\Events\Resolving;
+use Kirameki\Container\Exceptions\InvalidInstanceException;
 use Kirameki\Event\EventHandler;
+use function is_a;
 
 class Container
 {
@@ -67,8 +69,6 @@ class Container
         protected EntryCollection $entries,
         protected readonly Injector $injector,
     ) {
-        // Register itself.
-        $this->entries->set(new EntryFixed(self::class, $this));
     }
 
     /**
@@ -88,12 +88,12 @@ class Container
         $entry = $this->entries->get($id);
 
         if ($entry->isResolved()) {
-            return $entry->getInstance($this);
+            return $this->getInstance($id, $entry);
         }
 
         $this->onResolvingHandler?->emit(new Resolving($id, $entry));
 
-        $instance = $entry->getInstance($this);
+        $instance = $this->getInstance($id, $entry);
 
         $this->onResolvedHandler?->emit(new Resolved($id, $entry, $instance));
 
@@ -190,5 +190,25 @@ class Container
     public function clearScoped(): int
     {
         return $this->entries->clearScoped();
+    }
+
+    /**
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Entry $entry
+     * @return T
+     */
+    protected function getInstance(string $id, Entry $entry): object
+    {
+        $instance = $entry->getInstance($this);
+
+        if (is_a($instance, $id)) {
+            return $instance;
+        }
+
+        throw new InvalidInstanceException("Expected: instance of {$id}. Got: " . $instance::class . '.', [
+            'this' => $this,
+            'instance' => $instance,
+        ]);
     }
 }

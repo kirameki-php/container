@@ -12,16 +12,14 @@ use Override;
 class EntryFixed extends Entry
 {
     /**
-     * @param class-string<T> $id
      * @param T $instance
      * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
-        string $id,
         public object $instance,
         array $extenders = [],
     ) {
-        parent::__construct($id, Lifetime::Singleton, $extenders);
+        parent::__construct(Lifetime::Singleton, $extenders);
     }
 
     /**

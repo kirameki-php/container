@@ -28,7 +28,7 @@ class ContainerBuilder
      */
     public function set(string $id, Lifetime $lifetime, ?Closure $resolver = null): static
     {
-        $this->entries->set(new EntryLazy($id, $lifetime, $resolver));
+        $this->entries->set($id, new EntryLazy($lifetime, $resolver ?? static fn (Container $c) => $c->inject($id)));
         return $this;
     }
 
@@ -88,7 +88,7 @@ class ContainerBuilder
      */
     public function instance(string $id, object $instance): static
     {
-        $this->entries->set(new EntryFixed($id, $instance));
+        $this->entries->set($id, new EntryFixed($instance));
         return $this;
     }
 
@@ -130,6 +130,17 @@ class ContainerBuilder
     public function extend(string $id, Closure $extender): static
     {
         $this->entries->extend($id, $extender);
+        return $this;
+    }
+
+    /**
+     * @param class-string $id
+     * @param class-string $target
+     * @return $this
+     */
+    public function aliasTo(string $id, string $target): static
+    {
+        $this->entries->aliasTo($id, $target);
         return $this;
     }
 

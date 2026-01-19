@@ -10,12 +10,10 @@ use Closure;
 abstract class Entry
 {
     /**
-     * @param class-string<T> $id
      * @param Lifetime $lifetime
      * @param list<Closure(T, Container): T> $extenders
      */
     public function __construct(
-        public readonly string $id,
         public readonly Lifetime $lifetime,
         protected array $extenders = [],
     ) {

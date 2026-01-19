@@ -2,7 +2,6 @@
 
 namespace Tests\Kirameki\Container;
 
-use Kirameki\Container\Entry\ResolverEntry;
 use Kirameki\Container\EntryLazy;
 use Kirameki\Container\Lifetime;
 use Tests\Kirameki\Container\Sample\NoType;
@@ -11,27 +10,27 @@ class EntryTest extends TestCase
 {
     public function test_isExtended_initially_false(): void
     {
-        $entry = new EntryLazy(NoType::class, Lifetime::Transient);
+        $entry = new EntryLazy(Lifetime::Transient, fn() => new NoType(0));
         $this->assertFalse($entry->isExtended());
     }
 
     public function test_isExtended_after_extend(): void
     {
-        $entry = new EntryLazy(NoType::class, Lifetime::Transient);
+        $entry = new EntryLazy(Lifetime::Transient, fn() => new NoType(0));
         $entry->extend(fn(NoType $instance) => new NoType(1));
         $this->assertTrue($entry->isExtended());
     }
 
     public function test_isResolved_initially_false(): void
     {
-        $entry = new EntryLazy(NoType::class, Lifetime::Transient);
+        $entry = new EntryLazy(Lifetime::Transient, fn() => new NoType(0));
         $this->assertFalse($entry->isResolved());
     }
 
     public function test_isResolved_after_getInstance_singleton(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Singleton, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Singleton, fn() => new NoType(0));
         $entry->getInstance($container);
         $this->assertTrue($entry->isResolved());
     }
@@ -39,7 +38,7 @@ class EntryTest extends TestCase
     public function test_isResolved_after_getInstance_transient(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Transient, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Transient, fn() => new NoType(0));
         $entry->getInstance($container);
         $this->assertFalse($entry->isResolved());
     }
@@ -47,7 +46,7 @@ class EntryTest extends TestCase
     public function test_isResolved_after_getInstance_scoped(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Scoped, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Scoped, fn() => new NoType(0));
         $entry->getInstance($container);
         $this->assertTrue($entry->isResolved());
     }
@@ -55,7 +54,7 @@ class EntryTest extends TestCase
     public function test_unsetInstance_transient(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Transient, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Transient, fn() => new NoType(0));
         $this->assertSame(0, $entry->getInstance($container)->a);
         $this->assertFalse($entry->isResolved());
         $this->assertFalse($entry->unsetInstance());
@@ -65,7 +64,7 @@ class EntryTest extends TestCase
     public function test_unsetInstance_singleton(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Singleton, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Singleton, fn() => new NoType(0));
         $this->assertSame(0, $entry->getInstance($container)->a);
         $this->assertTrue($entry->isResolved());
         $this->assertTrue($entry->unsetInstance());
@@ -75,7 +74,7 @@ class EntryTest extends TestCase
     public function test_unsetInstance_extended(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Singleton, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Singleton, fn() => new NoType(0));
         $entry->extend(fn(NoType $instance) => new NoType(1));
         $this->assertSame(1, $entry->getInstance($container)->a);
         $this->assertTrue($entry->isResolved());
@@ -87,7 +86,7 @@ class EntryTest extends TestCase
     public function test_unsetInstance_scoped(): void
     {
         $container = $this->builder->build();
-        $entry = new EntryLazy(NoType::class, Lifetime::Scoped, fn() => new NoType(0));
+        $entry = new EntryLazy(Lifetime::Scoped, fn() => new NoType(0));
         $entry->getInstance($container);
         $this->assertTrue($entry->isResolved());
         $this->assertTrue($entry->unsetInstance());

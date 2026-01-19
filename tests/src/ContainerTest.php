@@ -29,16 +29,6 @@ use TypeError;
 
 final class ContainerTest extends TestCase
 {
-    public function test___construct(): void
-    {
-        $container = $this->builder->build();
-
-        $this->assertInstanceOf(Container::class, $container);
-        $this->assertTrue($container->has(Container::class));
-        $this->assertSame($container, $container->get(Container::class));
-    }
-
-
     public function test_has(): void
     {
         $this->builder->transient(DateTime::class, static fn() => new DateTime());
