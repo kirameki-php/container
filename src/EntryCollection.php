@@ -134,8 +134,8 @@ class EntryCollection implements Countable
             $entry = $this->get($id);
             if ($entry instanceof LazyEntry) {
                 $entry->unsetInstance();
+                $count++;
             }
-            $count++;
         }
         $this->scopedEntryIds = [];
         return $count;
