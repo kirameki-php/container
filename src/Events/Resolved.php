@@ -10,12 +10,12 @@ class Resolved extends Event
     /**
      * @param string $id
      * @param Entry $entry
-     * @param mixed $instance
+     * @param object $instance
      */
     public function __construct(
         public readonly string $id,
         public readonly Entry $entry,
-        public readonly mixed $instance,
+        public readonly object $instance,
     ) {
     }
 }
