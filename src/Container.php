@@ -14,26 +14,6 @@ use function is_a;
 class Container
 {
     /**
-     * @var EventHandler<Resolving>|null
-     */
-    protected ?EventHandler $onResolvingHandler = null;
-
-    /**
-     * @var EventHandler<Resolved>|null
-     */
-    protected ?EventHandler $onResolvedHandler = null;
-
-    /**
-     * @var EventHandler<Injecting>|null
-     */
-    protected ?EventHandler $onInjectingHandler = null;
-
-    /**
-     * @var EventHandler<Injected>|null
-     */
-    protected ?EventHandler $onInjectedHandler = null;
-
-    /**
      * @var EventHandler<Resolving>
      */
     public EventHandler $onResolving {
@@ -64,10 +44,18 @@ class Container
     /**
      * @param EntryCollection $entries
      * @param Injector $injector
+     * @param EventHandler<Resolving>|null $onResolvingHandler
+     * @param EventHandler<Resolved>|null $onResolvedHandler
+     * @param EventHandler<Injecting>|null $onInjectingHandler
+     * @param EventHandler<Injected>|null $onInjectedHandler
      */
     public function __construct(
-        protected EntryCollection $entries,
+        protected readonly EntryCollection $entries,
         protected readonly Injector $injector,
+        protected ?EventHandler $onResolvingHandler = null,
+        protected ?EventHandler $onResolvedHandler = null,
+        protected ?EventHandler $onInjectingHandler = null,
+        protected ?EventHandler $onInjectedHandler = null,
     ) {
     }
 
