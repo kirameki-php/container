@@ -19,13 +19,15 @@ class LazyEntry extends Entry
     /**
      * @param Lifetime $lifetime
      * @param Closure(Container): T $resolver
+     * @param list<Closure(T): mixed> $configurators
      */
     public function __construct(
         Lifetime $lifetime,
         protected readonly Closure $resolver,
+        protected ?array $configurators = null,
     ) {
         parent::__construct($lifetime);
-    }
+    }   
 
     /**
      * @inheritDoc
@@ -33,7 +35,17 @@ class LazyEntry extends Entry
     #[Override]
     public function getInstance(Container $container): object
     {
-        $instance = $this->instance ?? ($this->resolver)($container);
+        $instance = $this->instance;
+
+        if ($instance === null) {
+            $instance = ($this->resolver)($container);
+
+            if ($this->configurators !== null) {
+                foreach ($this->configurators as $configurator) {
+                    $configurator($instance);
+                }
+            }
+        }
 
         if ($this->lifetime !== Lifetime::Transient) {
             $this->instance = $instance;
@@ -55,6 +67,15 @@ class LazyEntry extends Entry
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param list<Closure(T): mixed> $configurators
+     * @return void
+     */
+    public function setConfigurators(array $configurators): void
+    {
+        $this->configurators = $configurators;
     }
 
     /**

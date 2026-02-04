@@ -9,10 +9,12 @@ class ContainerBuilder
     /**
      * @param EntryCollection $entries
      * @param Injector $injector
+     * @param array<class-string, list<Closure(mixed): mixed>> $configuratorsMap
      */
     public function __construct(
         protected EntryCollection $entries = new EntryCollection(),
         protected Injector $injector = new Injector(),
+        protected array $configuratorsMap = [],
     ) {
     }
 
@@ -93,6 +95,21 @@ class ContainerBuilder
     }
 
     /**
+     * Register a configurator for a given id.
+     * Returns itself for chaining.
+     *
+     * @template T of object
+     * @param class-string<T> $id
+     * @param Closure(T): mixed $configurator
+     * @return $this
+     */
+    public function configure(string $id, Closure $configurator): static
+    {
+        $this->configuratorsMap[$id][] = $configurator;
+        return $this;
+    }
+
+    /**
      * Delete a given entry.
      * Returns **true** if entry is found, **false** otherwise.
      *
@@ -146,6 +163,10 @@ class ContainerBuilder
      */
     public function build(): Container
     {
+        foreach ($this->configuratorsMap as $id => $configurators) {
+            $this->entries->setConfigurators($id, $configurators);
+        }
+
         return new Container($this->entries, $this->injector);
     }
 }
