@@ -27,7 +27,7 @@ class LazyEntry extends Entry
         protected ?array $configurators = null,
     ) {
         parent::__construct($lifetime);
-    }   
+    }
 
     /**
      * @inheritDoc
