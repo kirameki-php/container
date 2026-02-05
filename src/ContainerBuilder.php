@@ -3,6 +3,9 @@
 namespace Kirameki\Container;
 
 use Closure;
+use Kirameki\Exceptions\InvalidArgumentException;
+use ReflectionClass;
+use ReflectionNamedType;
 
 class ContainerBuilder
 {
@@ -106,6 +109,37 @@ class ContainerBuilder
     public function configure(string $id, Closure $configurator): static
     {
         $this->configuratorsMap[$id][] = $configurator;
+        return $this;
+    }
+
+    /**
+     * @template TBuilder of Builder
+     * @param class-string<TBuilder> $builderClass
+     * @param class-string $resultClass
+     * @return $this
+     */
+    public function builder(string $builderClass, ?string $resultClass = null): static
+    {
+        if (!$this->has($builderClass)) {
+            $this->singleton($builderClass);
+        }
+
+        // Infer result class from builder using reflection if not provided.
+        if ($resultClass === null) {
+            $ref = new ReflectionClass($builderClass);
+            $method = $ref->getMethod('build');
+            $resultType = $method->getReturnType();
+            if (!$resultType instanceof ReflectionNamedType) {
+                throw new InvalidArgumentException("Cannot infer result class from builder: {$builderClass}.");
+            }
+            $resultClass = $resultType->getName();
+            if (!class_exists($resultClass)) {
+                throw new InvalidArgumentException("Result class {$resultClass} from {$builderClass} does not exist.");
+            }
+        }
+
+        $this->singleton($resultClass, static fn(Container $c) => $c->get($builderClass)->build());
+
         return $this;
     }
 
