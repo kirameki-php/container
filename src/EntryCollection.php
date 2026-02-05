@@ -89,6 +89,7 @@ class EntryCollection implements Countable
     }
 
     /**
+     * @internal for internal use only
      * @template T of object
      * @param class-string<T> $id
      * @param list<Closure(T): mixed> $configurators
@@ -101,6 +102,7 @@ class EntryCollection implements Countable
         if ($entry instanceof LazyEntry) {
             /** @phpstan-ignore argument.type */
             $entry->setConfigurators($configurators);
+            return;
         }
 
         throw new EntryNotFoundException("Cannot configure {$id}. Entry not found or is not configurable.", [
